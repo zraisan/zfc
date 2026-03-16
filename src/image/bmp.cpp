@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <vector>
 
-FileHeader readHeader(const std::vector<unsigned char> &binary) {
+bmp::FileHeader bmp::readHeader(const std::vector<unsigned char> &binary) {
   uint32_t size =
       binary[2] | (binary[3] << 8) | (binary[4] << 16) | (binary[5] << 24);
 
@@ -24,17 +24,19 @@ FileHeader readHeader(const std::vector<unsigned char> &binary) {
 }
 
 std::vector<unsigned char>
-readImageData(std::vector<unsigned char> &imageBinary) {
-  FileHeader header = readHeader(imageBinary);
+bmp::readImageData(std::vector<unsigned char> &imageBinary) {
+  bmp::FileHeader header = bmp::readHeader(imageBinary);
 
   std::vector<unsigned char> unpaddedBinary(header.height * header.width * 3);
 
   int paddedRow = (header.width * 3 + 3) & ~3;
   for (int y = header.height - 1; y >= 0; y--) {
-    for (int x = 0; x < header.width * 3; x++) {
+    for (int x = 0; x < header.width * 3; x += 3) {
       int dist = y * header.width * 3 + x;
-      int src = y * paddedRow + x;
-      unpaddedBinary[dist] = imageBinary[header.offset + src];
+      int src = (header.height - 1 - y) * paddedRow + x;
+      unpaddedBinary[dist + 2] = imageBinary[header.offset + src];
+      unpaddedBinary[dist + 1] = imageBinary[header.offset + src + 1];
+      unpaddedBinary[dist] = imageBinary[header.offset + src + 2];
     }
   }
 
