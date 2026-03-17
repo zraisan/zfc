@@ -12,6 +12,7 @@ target_sources(zfc
     src/image/image.cpp
     src/image/bmp.cpp
     src/image/ppm.cpp
+    src/image/tga.cpp
 )
 
 
