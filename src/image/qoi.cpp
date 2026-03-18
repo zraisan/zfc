@@ -10,6 +10,22 @@ enum class EncodingMethod : uint8_t
     QOI_OP_RUN = 5
 };
 
+EncodingMethod getEncodingMethod(uint8_t byte)
+{
+    if (byte == 254)
+        return EncodingMethod::QOI_OP_RGB;
+    else if (byte == 255)
+        return EncodingMethod::QOI_OP_RGBA;
+    else if ((byte >> 6) == 0)
+        return EncodingMethod::QOI_OP_INDEX;
+    else if ((byte >> 6) == 1)
+        return EncodingMethod::QOI_OP_DIFF;
+    else if ((byte >> 6) == 3)
+        return EncodingMethod::QOI_OP_RUN;
+    else
+        return EncodingMethod::QOI_OP_LUMA;
+}
+
 qoi::FileHeader qoi::readHeader(const std::vector<unsigned char> &binary)
 {
     qoi::FileHeader header;
@@ -25,30 +41,26 @@ std::vector<unsigned char>
 qoi::readImageData(std::vector<unsigned char> &imageBinary)
 {
     qoi::FileHeader header = qoi::readHeader(imageBinary);
-    EncodingMethod emethod;
-    uint8_t firstByte = imageBinary[header.offset];
-    if (firstByte == 254) // 11111110
+    std::vector<unsigned char> imageData;
+
+    int idx = header.offset;
+    while (idx < imageBinary.size() - header.offset)
     {
-        emethod = EncodingMethod::QOI_OP_RGB;
-    }
-    else if (firstByte == 255) // 11111111
-    {
-        emethod = EncodingMethod::QOI_OP_RGBA;
-    }
-    else if (firstByte <= 63) // 00...
-    {
-        emethod = EncodingMethod::QOI_OP_INDEX;
-    }
-    else if (firstByte <= 127 and firstByte >= 64) // 01...
-    {
-        emethod = EncodingMethod::QOI_OP_DIFF;
-    }
-    else if (firstByte <= 191 and firstByte >= 128) // 10...
-    {
-        emethod = EncodingMethod::QOI_OP_LUMA;
-    }
-    else // 11...
-    {
-        emethod = EncodingMethod::QOI_OP_RUN;
+        EncodingMethod emethod = getEncodingMethod(imageBinary[idx]);
+        switch (emethod)
+        {
+        case EncodingMethod::QOI_OP_RGB:
+            break;
+        case EncodingMethod::QOI_OP_RGBA:
+            break;
+        case EncodingMethod::QOI_OP_INDEX:
+            break;
+        case EncodingMethod::QOI_OP_DIFF:
+            break;
+        case EncodingMethod::QOI_OP_LUMA:
+            break;
+        case EncodingMethod::QOI_OP_RUN:
+            break;
+        }
     }
 }
