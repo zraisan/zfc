@@ -44,22 +44,57 @@ qoi::readImageData(std::vector<unsigned char> &imageBinary)
     std::vector<unsigned char> imageData;
 
     int idx = header.offset;
+    uint8_t run = 0;
     while (idx < imageBinary.size() - header.offset)
     {
+        if (run > 0)
+        {
+            run--;
+        }
         EncodingMethod emethod = getEncodingMethod(imageBinary[idx]);
         switch (emethod)
         {
         case EncodingMethod::QOI_OP_RGB:
+            idx++;                                 // Skip Encoding Byte
+            imageData.push_back(imageBinary[idx]); // R
+            idx++;
+            imageData.push_back(imageBinary[idx]); // G
+            idx++;
+            imageData.push_back(imageBinary[idx]); // B
+            idx++;
             break;
         case EncodingMethod::QOI_OP_RGBA:
+            idx++;                                 // Skip Encoding Byte
+            imageData.push_back(imageBinary[idx]); // R
+            idx++;
+            imageData.push_back(imageBinary[idx]); // G
+            idx++;
+            imageData.push_back(imageBinary[idx]); // B
+            idx++;
+            imageData.push_back(imageBinary[idx]); // A
+            idx++;
             break;
         case EncodingMethod::QOI_OP_INDEX:
+            imageData.push_back(imageBinary[idx]);
+            idx++;
             break;
         case EncodingMethod::QOI_OP_DIFF:
+            imageData.push_back((imageBinary[idx] >> 4) & 3); // R
+            imageData.push_back((imageBinary[idx] >> 2) & 3); // G
+            imageData.push_back((imageBinary[idx]) & 3);      // B
+            idx++;
             break;
         case EncodingMethod::QOI_OP_LUMA:
+            uint8_t greenValue = (imageBinary[idx] & 0x3f) - 32; // Remove 32 value bias
+            idx++;
+            imageData.push_back(greenValue - 8 + ((imageBinary[idx] >> 4) + 0x0f)); // Remove 8 bias from greenValue and get red value
+            imageData.push_back(greenValue);
+            imageData.push_back(greenValue - 8 + ((imageBinary[idx] >> 4) + 0x0f)); // Remove 8 bias from greenValue and get blue value
+            idx++;
             break;
         case EncodingMethod::QOI_OP_RUN:
+            run = (imageBinary[idx] & 0x3f);
+
             break;
         }
     }
