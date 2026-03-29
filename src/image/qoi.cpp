@@ -9,13 +9,6 @@ enum class EncodingMethod : uint8_t {
   QOI_OP_RUN = 5
 };
 
-typedef union {
-  struct {
-    unsigned char r, g, b, a;
-  } rgba;
-  uint32_t v;
-} ColorIndexArray;
-
 EncodingMethod getEncodingMethod(uint8_t byte) {
   if (byte == 254)
     return EncodingMethod::QOI_OP_RGB;
@@ -31,9 +24,6 @@ EncodingMethod getEncodingMethod(uint8_t byte) {
     return EncodingMethod::QOI_OP_LUMA;
 }
 
-int getIndex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  return (r * 3 + g * 5 + b * 7 + a * 11) % 64;
-}
 
 qoi::FileHeader qoi::readHeader(const std::vector<unsigned char> &binary) {
   qoi::FileHeader header;
@@ -53,8 +43,8 @@ qoi::readImageData(std::vector<unsigned char> &imageBinary) {
   std::vector<unsigned char> imageData;
 
   int idx = header.offset;
-  ColorIndexArray index[64] = {};
-  ColorIndexArray px = {};
+  qoi::ColorIndexArray index[64] = {};
+  qoi::ColorIndexArray px = {};
   px.rgba.a = 255;
   uint8_t run = 0;
   while (idx < imageBinary.size() - header.offset) {
@@ -100,7 +90,7 @@ qoi::readImageData(std::vector<unsigned char> &imageBinary) {
         idx++;
         break;
       }
-      index[getIndex(px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a)] = px;
+      index[qoi::getIndex(px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a)] = px;
     }
     imageData.push_back(px.rgba.r);
     imageData.push_back(px.rgba.g);
