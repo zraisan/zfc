@@ -21,7 +21,8 @@ bmp::FileHeader bmp::readHeader(const std::vector<unsigned char> &binary)
           offset,
           width,
           height,
-          bitsPerPixel};
+          bitsPerPixel,
+          static_cast<uint8_t>(bitsPerPixel / 8)};
 }
 
 std::vector<unsigned char>

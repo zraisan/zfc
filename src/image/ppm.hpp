@@ -27,10 +27,14 @@ void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
   output << "P6\n"
          << imageHeader.width << " " << imageHeader.height << "\n255\n";
 
+  int ch = imageHeader.channels;
   for (int y = 0; y < imageHeader.height; y++) {
-    for (int x = 0; x < imageHeader.width * 3; x++) {
-      int i = y * imageHeader.width * 3 + x;
+    for (int x = 0; x < imageHeader.width; x++) {
+      int i = (y * imageHeader.width + x) * ch;
       output.put(imageBinary[i]);
+      output.put(imageBinary[i + 1]);
+      output.put(imageBinary[i + 2]);
+      // PPM P6 has no alpha support, always output 3 channels
     }
   }
 }

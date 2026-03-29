@@ -27,6 +27,7 @@ void processImage(std::string inputPath, std::string outputPath) {
   std::vector<unsigned char> imageData;
   int32_t width = 0, height = 0;
   uint16_t bitsPerPixel = 0;
+  uint8_t channels = 3;
 
   if (inputType == "bmp") {
     bmp::FileHeader header = bmp::readHeader(imageBinary);
@@ -34,21 +35,23 @@ void processImage(std::string inputPath, std::string outputPath) {
     width = header.width;
     height = header.height;
     bitsPerPixel = header.bitsPerPixel;
+    channels = header.channels;
   } else if (inputType == "ppm") {
     ppm::FileHeader header = ppm::readHeader(imageBinary);
     imageData = ppm::readImageData(imageBinary);
     width = header.width;
     height = header.height;
     bitsPerPixel = header.bitsPerPixel;
+    channels = header.channels;
   }
 
   if (outputType == "ppm") {
-    bmp::FileHeader out = {{}, 0, 0, width, height, bitsPerPixel};
+    ppm::FileHeader out = {{}, 0, 0, width, height, bitsPerPixel, 3};
     ppm::generate(out, imageData, outputPath);
   } else if (outputType == "bmp") {
-    uint32_t paddedRow = (width * 3 + 3) & ~3;
+    uint32_t paddedRow = channels == 4 ? width * 4 : (width * 3 + 3) & ~3;
     uint32_t fileSize = 54 + paddedRow * height;
-    bmp::FileHeader out = {{}, fileSize, 54, width, height, bitsPerPixel};
+    bmp::FileHeader out = {{}, fileSize, 54, width, height, bitsPerPixel, channels};
     bmp::generate(out, imageData, outputPath);
   }
 }

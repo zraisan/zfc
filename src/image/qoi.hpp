@@ -29,10 +29,15 @@ void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
   output.write(reinterpret_cast<const char *>(&width), 4);
   output.write(reinterpret_cast<const char *>(&height), 4);
 
+  int ch = imageHeader.channels;
   for (int y = 0; y < imageHeader.height; y++) {
-    for (int x = 0; x < imageHeader.width * 3; x++) {
-      int i = y * imageHeader.width * 3 + x;
+    for (int x = 0; x < imageHeader.width; x++) {
+      int i = (y * imageHeader.width + x) * ch;
       output.put(imageBinary[i]);
+      output.put(imageBinary[i + 1]);
+      output.put(imageBinary[i + 2]);
+      if (ch == 4)
+        output.put(imageBinary[i + 3]);
     }
   }
 }

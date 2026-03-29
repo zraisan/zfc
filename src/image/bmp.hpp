@@ -80,19 +80,20 @@ void generate(FH &imageHeader, std::vector<unsigned char> &imageData,
       4); // 50: (4B) Number of important colors, or 0 when all are important
 
   /* Image Data */
-  int paddedRow = (imageHeader.width * 3 + 3) & ~3;
+  int ch = imageHeader.channels;
+  int paddedRow = ch == 4 ? imageHeader.width * 4 : (imageHeader.width * 3 + 3) & ~3;
   for (int y = imageHeader.height - 1; y >= 0; y--) {
-    for (int x = 0; x < imageHeader.width * 3; x += 3) {
-      int i = y * imageHeader.width * 3 + x;
-      uint8_t b = imageData[i + 2];
-      uint8_t g = imageData[i + 1];
-      uint8_t r = imageData[i];
-      output.write(reinterpret_cast<const char *>(&b), 1);
-      output.write(reinterpret_cast<const char *>(&g), 1);
-      output.write(reinterpret_cast<const char *>(&r), 1);
+    for (int x = 0; x < imageHeader.width * ch; x += ch) {
+      int i = y * imageHeader.width * ch + x;
+      output.write(reinterpret_cast<const char *>(&imageData[i + 2]), 1); // B
+      output.write(reinterpret_cast<const char *>(&imageData[i + 1]), 1); // G
+      output.write(reinterpret_cast<const char *>(&imageData[i]),     1); // R
+      if (ch == 4)
+        output.write(reinterpret_cast<const char *>(&imageData[i + 3]), 1); // A
     }
-    for (int p = imageHeader.width * 3; p < paddedRow; p++) {
-      output.write(reinterpret_cast<const char *>(&zero8), 1);
+    if (ch == 3) {
+      for (int p = imageHeader.width * 3; p < paddedRow; p++)
+        output.write(reinterpret_cast<const char *>(&zero8), 1);
     }
   }
 }

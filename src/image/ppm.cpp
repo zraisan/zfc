@@ -39,6 +39,7 @@ ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary) {
   pos++;
 
   fileHeader.offset = pos;
+  fileHeader.channels = 3;
 
   return fileHeader;
 }

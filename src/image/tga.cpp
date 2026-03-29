@@ -11,6 +11,7 @@ tga::FileHeader tga::readHeader(std::vector<unsigned char> &binary)
     header.rightToLeft = (binary[17] >> 4) & 1;
     header.topToBottom = (binary[17] >> 5) & 1;
     header.offset = 18 + header.fileIdLength;
+    header.channels = header.bitsPerPixel / 8;
     return header;
 }
 
