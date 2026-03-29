@@ -1,101 +1,112 @@
 #include "qoi.hpp"
 
-enum class EncodingMethod : uint8_t
-{
-    QOI_OP_RGB = 0,
-    QOI_OP_RGBA = 1,
-    QOI_OP_INDEX = 2,
-    QOI_OP_DIFF = 3,
-    QOI_OP_LUMA = 4,
-    QOI_OP_RUN = 5
+enum class EncodingMethod : uint8_t {
+  QOI_OP_RGB = 0,
+  QOI_OP_RGBA = 1,
+  QOI_OP_INDEX = 2,
+  QOI_OP_DIFF = 3,
+  QOI_OP_LUMA = 4,
+  QOI_OP_RUN = 5
 };
 
-EncodingMethod getEncodingMethod(uint8_t byte)
-{
-    if (byte == 254)
-        return EncodingMethod::QOI_OP_RGB;
-    else if (byte == 255)
-        return EncodingMethod::QOI_OP_RGBA;
-    else if ((byte >> 6) == 0)
-        return EncodingMethod::QOI_OP_INDEX;
-    else if ((byte >> 6) == 1)
-        return EncodingMethod::QOI_OP_DIFF;
-    else if ((byte >> 6) == 3)
-        return EncodingMethod::QOI_OP_RUN;
-    else
-        return EncodingMethod::QOI_OP_LUMA;
+typedef union {
+  struct {
+    unsigned char r, g, b, a;
+  } rgba;
+  uint32_t v;
+} ColorIndexArray;
+
+EncodingMethod getEncodingMethod(uint8_t byte) {
+  if (byte == 254)
+    return EncodingMethod::QOI_OP_RGB;
+  else if (byte == 255)
+    return EncodingMethod::QOI_OP_RGBA;
+  else if ((byte >> 6) == 0)
+    return EncodingMethod::QOI_OP_INDEX;
+  else if ((byte >> 6) == 1)
+    return EncodingMethod::QOI_OP_DIFF;
+  else if ((byte >> 6) == 3)
+    return EncodingMethod::QOI_OP_RUN;
+  else
+    return EncodingMethod::QOI_OP_LUMA;
 }
 
-qoi::FileHeader qoi::readHeader(const std::vector<unsigned char> &binary)
-{
-    qoi::FileHeader header;
-    header.width = binary[4] | binary[5] | binary[6] | binary[7];
-    header.height = binary[8] | binary[9] | binary[10] | binary[11];
-    header.channels = binary[12];
-    header.colorspace = binary[13];
-    header.offset = 14;
-    return header;
+int getIndex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+  return (r * 3 + g * 5 + b * 7 + a * 11) % 64;
+}
+
+qoi::FileHeader qoi::readHeader(const std::vector<unsigned char> &binary) {
+  qoi::FileHeader header;
+  header.width =
+      (binary[4] << 24) | (binary[5] << 16) | (binary[6] << 8) | binary[7];
+  header.height =
+      (binary[8] << 24) | (binary[9] << 16) | (binary[10] << 8) | binary[11];
+  header.channels = binary[12];
+  header.colorspace = binary[13];
+  header.offset = 14;
+  return header;
 }
 
 std::vector<unsigned char>
-qoi::readImageData(std::vector<unsigned char> &imageBinary)
-{
-    qoi::FileHeader header = qoi::readHeader(imageBinary);
-    std::vector<unsigned char> imageData;
+qoi::readImageData(std::vector<unsigned char> &imageBinary) {
+  qoi::FileHeader header = qoi::readHeader(imageBinary);
+  std::vector<unsigned char> imageData;
 
-    int idx = header.offset;
-    uint8_t run = 0;
-    while (idx < imageBinary.size() - header.offset)
-    {
-        if (run > 0)
-        {
-            run--;
-        }
-        EncodingMethod emethod = getEncodingMethod(imageBinary[idx]);
-        switch (emethod)
-        {
-        case EncodingMethod::QOI_OP_RGB:
-            idx++;                                 // Skip Encoding Byte
-            imageData.push_back(imageBinary[idx]); // R
-            idx++;
-            imageData.push_back(imageBinary[idx]); // G
-            idx++;
-            imageData.push_back(imageBinary[idx]); // B
-            idx++;
-            break;
-        case EncodingMethod::QOI_OP_RGBA:
-            idx++;                                 // Skip Encoding Byte
-            imageData.push_back(imageBinary[idx]); // R
-            idx++;
-            imageData.push_back(imageBinary[idx]); // G
-            idx++;
-            imageData.push_back(imageBinary[idx]); // B
-            idx++;
-            imageData.push_back(imageBinary[idx]); // A
-            idx++;
-            break;
-        case EncodingMethod::QOI_OP_INDEX:
-            imageData.push_back(imageBinary[idx]);
-            idx++;
-            break;
-        case EncodingMethod::QOI_OP_DIFF:
-            imageData.push_back((imageBinary[idx] >> 4) & 3); // R
-            imageData.push_back((imageBinary[idx] >> 2) & 3); // G
-            imageData.push_back((imageBinary[idx]) & 3);      // B
-            idx++;
-            break;
-        case EncodingMethod::QOI_OP_LUMA:
-            uint8_t greenValue = (imageBinary[idx] & 0x3f) - 32; // Remove 32 value bias
-            idx++;
-            imageData.push_back(greenValue - 8 + ((imageBinary[idx] >> 4) + 0x0f)); // Remove 8 bias from greenValue and get red value
-            imageData.push_back(greenValue);
-            imageData.push_back(greenValue - 8 + ((imageBinary[idx] >> 4) + 0x0f)); // Remove 8 bias from greenValue and get blue value
-            idx++;
-            break;
-        case EncodingMethod::QOI_OP_RUN:
-            run = (imageBinary[idx] & 0x3f);
-
-            break;
-        }
+  int idx = header.offset;
+  ColorIndexArray index[64] = {};
+  ColorIndexArray px = {};
+  px.rgba.a = 255;
+  uint8_t run = 0;
+  while (idx < imageBinary.size() - header.offset) {
+    if (run > 0) {
+      run--;
+    } else {
+      EncodingMethod emethod = getEncodingMethod(imageBinary[idx]);
+      switch (emethod) {
+      case EncodingMethod::QOI_OP_RGB:
+        idx++;
+        px.rgba.r = imageBinary[idx++];
+        px.rgba.g = imageBinary[idx++];
+        px.rgba.b = imageBinary[idx++];
+        break;
+      case EncodingMethod::QOI_OP_RGBA:
+        idx++;
+        px.rgba.r = imageBinary[idx++];
+        px.rgba.g = imageBinary[idx++];
+        px.rgba.b = imageBinary[idx++];
+        px.rgba.a = imageBinary[idx++];
+        break;
+      case EncodingMethod::QOI_OP_INDEX:
+        px = index[imageBinary[idx] & 0x3f];
+        idx++;
+        break;
+      case EncodingMethod::QOI_OP_DIFF:
+        px.rgba.r += ((imageBinary[idx] >> 4) & 3) - 2;
+        px.rgba.g += ((imageBinary[idx] >> 2) & 3) - 2;
+        px.rgba.b += ((imageBinary[idx]) & 3) - 2;
+        idx++;
+        break;
+      case EncodingMethod::QOI_OP_LUMA: {
+        int8_t dg = (imageBinary[idx] & 0x3f) - 32;
+        idx++;
+        px.rgba.r += ((imageBinary[idx] >> 4) & 0x0f) - 8 + dg;
+        px.rgba.g += dg;
+        px.rgba.b += (imageBinary[idx] & 0x0f) - 8 + dg;
+        idx++;
+        break;
+      }
+      case EncodingMethod::QOI_OP_RUN:
+        run = (imageBinary[idx] & 0x3f);
+        idx++;
+        break;
+      }
+      index[getIndex(px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a)] = px;
     }
+    imageData.push_back(px.rgba.r);
+    imageData.push_back(px.rgba.g);
+    imageData.push_back(px.rgba.b);
+    if (header.channels == 4)
+      imageData.push_back(px.rgba.a);
+  }
+  return imageData;
 }

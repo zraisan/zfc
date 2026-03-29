@@ -16,6 +16,7 @@ namespace tga
         bool rightToLeft;
         bool topToBottom;
         uint8_t bitsPerPixel;
+        uint8_t channels;
     };
 
     FileHeader readHeader(std::vector<unsigned char> &binary);

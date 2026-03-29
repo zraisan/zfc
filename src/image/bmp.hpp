@@ -13,6 +13,7 @@ struct FileHeader {
   int32_t width;
   int32_t height;
   uint16_t bitsPerPixel;
+  uint8_t channels;
 };
 
 FileHeader readHeader(const std::vector<unsigned char> &binary);
