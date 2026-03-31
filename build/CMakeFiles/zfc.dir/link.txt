@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/zfc.dir/link.d CMakeFiles/zfc.dir/src/main.cpp.o CMakeFiles/zfc.dir/src/image/image.cpp.o CMakeFiles/zfc.dir/src/image/bmp.cpp.o CMakeFiles/zfc.dir/src/image/ppm.cpp.o -o zfc
