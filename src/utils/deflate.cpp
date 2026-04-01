@@ -2,57 +2,57 @@
 #include <cstdint>
 #include <math.h>
 
-uint8_t deflate::filterNone(uint8_t x)
+uint8_t deflate::filter_none(uint8_t x)
 {
     return x;
 }
 
-uint8_t deflate::filterSub(uint8_t x, uint8_t a)
+uint8_t deflate::filter_sub(uint8_t x, uint8_t a)
 {
     return x - a;
 }
 
-uint8_t deflate::filterUp(uint8_t x, uint8_t b)
+uint8_t deflate::filter_up(uint8_t x, uint8_t b)
 {
     return x - b;
 }
 
-uint8_t deflate::filterAverage(uint8_t x, uint8_t a, uint8_t b)
+uint8_t deflate::filter_average(uint8_t x, uint8_t a, uint8_t b)
 {
     return x - std::floor((a + b) / 2);
 }
 
-uint8_t deflate::filterPaeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
+uint8_t deflate::filter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
 {
-    return x - deflate::paethPredictor(a, b, c);
+    return x - deflate::paeth_predictor(a, b, c);
 }
 
-uint8_t deflate::defilterNone(uint8_t x)
+uint8_t deflate::defilter_none(uint8_t x)
 {
     return x;
 }
 
-uint8_t deflate::defilterSub(uint8_t x, uint8_t a)
+uint8_t deflate::defilter_sub(uint8_t x, uint8_t a)
 {
     return x + a;
 }
 
-uint8_t deflate::defilterUp(uint8_t x, uint8_t b)
+uint8_t deflate::defilter_up(uint8_t x, uint8_t b)
 {
     return x + b;
 }
 
-uint8_t deflate::defilterAverage(uint8_t x, uint8_t a, uint8_t b)
+uint8_t deflate::defilter_average(uint8_t x, uint8_t a, uint8_t b)
 {
     return x + std::floor((a + b) / 2);
 }
 
-uint8_t deflate::defilterPaeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
+uint8_t deflate::defilter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
 {
-    return x + deflate::paethPredictor(a, b, c);
+    return x + deflate::paeth_predictor(a, b, c);
 }
 
-uint8_t deflate::paethPredictor(uint8_t a, uint8_t b, uint8_t c)
+uint8_t deflate::paeth_predictor(uint8_t a, uint8_t b, uint8_t c)
 {
     uint8_t p = a + b - c;
     uint8_t pa = std::abs(p - a);

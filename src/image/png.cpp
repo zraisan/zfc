@@ -1,16 +1,16 @@
 #include "png.hpp"
 #include <string>
 
-png::FileHeader png::readHeader(const std::vector<unsigned char> &binary)
+png::FileHeader png::read_header(const std::vector<unsigned char> &binary)
 {
     png::FileHeader header;
     header.width = (binary[16] << 24) | (binary[17] << 16) | (binary[18] << 8) | binary[19];
     header.height = (binary[20] << 24) | (binary[21] << 16) | (binary[22] << 8) | binary[23];
 
-    uint8_t bitDepth = binary[24];
-    uint8_t colorType = binary[25];
+    uint8_t bit_depth = binary[24];
+    uint8_t color_type = binary[25];
 
-    switch (colorType)
+    switch (color_type)
     {
     case 0:
         header.channels = 1;
@@ -29,39 +29,39 @@ png::FileHeader png::readHeader(const std::vector<unsigned char> &binary)
         break; // Truecolor + alpha
     }
 
-    header.bitsPerPixel = bitDepth * header.channels;
+    header.bits_per_pixel = bit_depth * header.channels;
     header.offset = 33; // signature(4) + length(4) + IHDR(4) + IHDR data(13) + CRC(4)
     return header;
 }
 
-std::vector<unsigned char> png::readImageData(std::vector<unsigned char> &imageBinary)
+std::vector<unsigned char> png::decode(std::vector<unsigned char> &image_binary)
 {
-    png::FileHeader header = readHeader(imageBinary);
+    png::FileHeader header = read_header(image_binary);
 
     int idx = header.offset;
-    while (idx < imageBinary.size())
+    while (idx < image_binary.size())
     {
-        std::string type(imageBinary.begin() + idx + 4, imageBinary.begin() + idx + 8);
+        std::string type(image_binary.begin() + idx + 4, image_binary.begin() + idx + 8);
 
         if (type == "PLTE")
-            png::readPLTE(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+            png::read_plte(std::vector(image_binary.begin() + idx + 8, image_binary.end()));
         if (type == "IDAT")
-            png::readIDAT(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+            png::read_idat(std::vector(image_binary.begin() + idx + 8, image_binary.end()));
         if (type == "IEND")
-            png::readIEND(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+            png::read_iend(std::vector(image_binary.begin() + idx + 8, image_binary.end()));
 
-        idx += (imageBinary[idx] << 24) | (imageBinary[idx + 1] << 16) | (imageBinary[idx + 2] << 8) | imageBinary[idx + 3] + 12; // traverse by data length (Chunk data) and overhead length (Length + Chunk type + CRC)
+        idx += (image_binary[idx] << 24) | (image_binary[idx + 1] << 16) | (image_binary[idx + 2] << 8) | image_binary[idx + 3] + 12; // traverse by data length (Chunk data) and overhead length (Length + Chunk type + CRC)
     }
 }
 
-std::vector<unsigned char> png::readPLTE(const std::vector<unsigned char> &binary)
+std::vector<unsigned char> png::read_plte(const std::vector<unsigned char> &binary)
 {
 }
 
-std::vector<unsigned char> png::readIDAT(const std::vector<unsigned char> &binary)
+std::vector<unsigned char> png::read_idat(const std::vector<unsigned char> &binary)
 {
 }
 
-std::vector<unsigned char> png::readIEND(const std::vector<unsigned char> &binary)
+std::vector<unsigned char> png::read_iend(const std::vector<unsigned char> &binary)
 {
 }

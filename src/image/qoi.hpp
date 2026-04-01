@@ -21,21 +21,21 @@ typedef union {
   uint32_t v;
 } ColorIndexArray;
 
-inline int getIndex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+inline int get_index(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   return (r * 3 + g * 5 + b * 7 + a * 11) % 64;
 }
 
-FileHeader readHeader(const std::vector<unsigned char> &binary);
+FileHeader read_header(const std::vector<unsigned char> &binary);
 std::vector<unsigned char>
-readImageData(std::vector<unsigned char> &imageBinary);
+decode(std::vector<unsigned char> &image_binary);
 
 template <typename FH>
-void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
-              std::string outputPath) {
-  std::ofstream output(outputPath, std::ios::binary);
-  uint32_t width = imageHeader.width;
-  uint32_t height = imageHeader.height;
-  uint8_t channels = imageHeader.channels;
+void encode(FH &image_header, std::vector<unsigned char> &image_binary,
+              std::string output_path) {
+  std::ofstream output(output_path, std::ios::binary);
+  uint32_t width = image_header.width;
+  uint32_t height = image_header.height;
+  uint8_t channels = image_header.channels;
   uint8_t colorspace = 0;
 
   output.write("qoif", 4);
@@ -50,12 +50,12 @@ void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
   prev.rgba.a = 255;
   ColorIndexArray px = prev;
   uint8_t run = 0;
-  while (idx < (int)imageBinary.size()) {
-    px.rgba.r = imageBinary[idx + 0];
-    px.rgba.g = imageBinary[idx + 1];
-    px.rgba.b = imageBinary[idx + 2];
+  while (idx < (int)image_binary.size()) {
+    px.rgba.r = image_binary[idx + 0];
+    px.rgba.g = image_binary[idx + 1];
+    px.rgba.b = image_binary[idx + 2];
     if (channels == 4)
-      px.rgba.a = imageBinary[idx + 3];
+      px.rgba.a = image_binary[idx + 3];
 
     if (px.v == prev.v) {
       run++;
@@ -98,7 +98,7 @@ void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
       }
     }
 
-    index[getIndex(px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a)] = px;
+    index[get_index(px.rgba.r, px.rgba.g, px.rgba.b, px.rgba.a)] = px;
     prev = px;
     idx += channels;
   }

@@ -2,11 +2,11 @@
 #include <bit>
 #include <string>
 
-ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary)
+ppm::FileHeader ppm::read_header(const std::vector<unsigned char> &binary)
 {
-  ppm::FileHeader fileHeader;
-  fileHeader.fileType[0] = binary[0];
-  fileHeader.fileType[1] = binary[1];
+  ppm::FileHeader file_header;
+  file_header.file_type[0] = binary[0];
+  file_header.file_type[1] = binary[1];
 
   int pos = 3;
 
@@ -30,36 +30,36 @@ ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary)
     h += binary[pos++];
   pos++;
 
-  fileHeader.width = std::stoi(w);
-  fileHeader.height = std::stoi(h);
+  file_header.width = std::stoi(w);
+  file_header.height = std::stoi(h);
 
-  std::string colorDepth;
+  std::string color_depth;
   while (binary[pos] != '\n')
-    colorDepth += binary[pos++];
-  fileHeader.bitsPerPixel =
-      (std::bit_width(static_cast<unsigned>(std::stoi(colorDepth)))) * 3;
+    color_depth += binary[pos++];
+  file_header.bits_per_pixel =
+      (std::bit_width(static_cast<unsigned>(std::stoi(color_depth)))) * 3;
   pos++;
 
-  fileHeader.offset = pos;
-  fileHeader.channels = 3;
+  file_header.offset = pos;
+  file_header.channels = 3;
 
-  return fileHeader;
+  return file_header;
 }
 
 std::vector<unsigned char>
-ppm::readImageData(std::vector<unsigned char> &imageBinary)
+ppm::decode(std::vector<unsigned char> &image_binary)
 {
-  ppm::FileHeader imageHeader = ppm::readHeader(imageBinary);
+  ppm::FileHeader image_header = ppm::read_header(image_binary);
 
-  std::vector<unsigned char> imageData;
+  std::vector<unsigned char> image_data;
 
-  for (int y = 0; y < imageHeader.height; y++)
+  for (int y = 0; y < image_header.height; y++)
   {
-    for (int x = 0; x < imageHeader.width * 3; x++)
+    for (int x = 0; x < image_header.width * 3; x++)
     {
-      int i = y * imageHeader.width * 3 + x;
-      imageData.push_back(imageBinary[imageHeader.offset + i]);
+      int i = y * image_header.width * 3 + x;
+      image_data.push_back(image_binary[image_header.offset + i]);
     }
   }
-  return imageData;
+  return image_data;
 }

@@ -9,29 +9,29 @@ namespace tga
 {
     struct FileHeader
     {
-        uint8_t fileIdLength;
+        uint8_t file_id_length;
         uint32_t offset;
         uint16_t width;
         uint16_t height;
-        bool rightToLeft;
-        bool topToBottom;
-        uint8_t bitsPerPixel;
+        bool right_to_left;
+        bool top_to_bottom;
+        uint8_t bits_per_pixel;
         uint8_t channels;
     };
 
-    FileHeader readHeader(std::vector<unsigned char> &binary);
+    FileHeader read_header(std::vector<unsigned char> &binary);
     std::vector<unsigned char>
-    readImageData(std::vector<unsigned char> &imageBinary);
+    decode(std::vector<unsigned char> &image_binary);
 
     template <typename FH>
-    void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
-                  std::string outputPath)
+    void encode(FH &image_header, std::vector<unsigned char> &image_binary,
+                  std::string output_path)
     {
-        std::ofstream output(outputPath, std::ios::binary);
+        std::ofstream output(output_path, std::ios::binary);
         uint8_t zero8 = 0;
         uint16_t zero16 = 0;
         int zero = 0;
-        u_int8_t imageDescriptor = 32;
+        u_int8_t image_descriptor = 32;
 
         output.write(reinterpret_cast<const char *> & zero8, 1);
         output.write(reinterpret_cast<const char *> & zero8, 1);
@@ -39,10 +39,10 @@ namespace tga
         output.write(reinterpret_cast<const char *> & zero, 5);
         output.write(reinterpret_cast<const char *> & zero16, 2);
         output.write(reinterpret_cast<const char *> & zero16, 2);
-        output.write(reinterpret_cast<const char *> & imageHeader.width, 2);
-        output.write(reinterpret_cast<const char *> & imageHeader.height, 2);
-        output.write(reinterpret_cast<const char *> & imageHeader.bitsPerPixel, 1);
-        output.write(reinterpret_cast<const char *> & imageDescriptor, 1);
+        output.write(reinterpret_cast<const char *> & image_header.width, 2);
+        output.write(reinterpret_cast<const char *> & image_header.height, 2);
+        output.write(reinterpret_cast<const char *> & image_header.bits_per_pixel, 1);
+        output.write(reinterpret_cast<const char *> & image_descriptor, 1);
     }
 
 } // namespace tga

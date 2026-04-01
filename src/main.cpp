@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (std::strcmp(argv[1], "image") == 0) {
-    processImage(argv[2], argv[3]);
+    process_image(argv[2], argv[3]);
   } else if (std::strcmp(argv[1], "doc") == 0) {
     std::cout << "doc" << std::endl;
   } else if (std::strcmp(argv[1], "audio") == 0) {

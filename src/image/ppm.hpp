@@ -7,33 +7,33 @@
 
 namespace ppm {
 struct FileHeader {
-  char fileType[2];
-  uint32_t fileSize;
+  char file_type[2];
+  uint32_t file_size;
   uint32_t offset;
   int32_t width;
   int32_t height;
-  uint16_t bitsPerPixel;
+  uint16_t bits_per_pixel;
   uint8_t channels;
 };
 
-FileHeader readHeader(const std::vector<unsigned char> &binary);
+FileHeader read_header(const std::vector<unsigned char> &binary);
 std::vector<unsigned char>
-readImageData(std::vector<unsigned char> &imageBinary);
+decode(std::vector<unsigned char> &image_binary);
 
 template <typename FH>
-void generate(FH &imageHeader, std::vector<unsigned char> &imageBinary,
-              std::string outputPath) {
-  std::ofstream output(outputPath, std::ios::binary);
+void encode(FH &image_header, std::vector<unsigned char> &image_binary,
+              std::string output_path) {
+  std::ofstream output(output_path, std::ios::binary);
   output << "P6\n"
-         << imageHeader.width << " " << imageHeader.height << "\n255\n";
+         << image_header.width << " " << image_header.height << "\n255\n";
 
-  int ch = imageHeader.channels;
-  for (int y = 0; y < imageHeader.height; y++) {
-    for (int x = 0; x < imageHeader.width; x++) {
-      int i = (y * imageHeader.width + x) * ch;
-      output.put(imageBinary[i]);
-      output.put(imageBinary[i + 1]);
-      output.put(imageBinary[i + 2]);
+  int ch = image_header.channels;
+  for (int y = 0; y < image_header.height; y++) {
+    for (int x = 0; x < image_header.width; x++) {
+      int i = (y * image_header.width + x) * ch;
+      output.put(image_binary[i]);
+      output.put(image_binary[i + 1]);
+      output.put(image_binary[i + 2]);
       // PPM P6 has no alpha support, always output 3 channels
     }
   }
