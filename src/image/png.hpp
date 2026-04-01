@@ -15,7 +15,9 @@ namespace png
     };
 
     FileHeader readHeader(const std::vector<unsigned char> &binary);
-    std::vector<unsigned char> getPLTE(const std::vector<unsigned char> &binary);
+    std::vector<unsigned char> readPLTE(const std::vector<unsigned char> &binary);
+    std::vector<unsigned char> readIDAT(const std::vector<unsigned char> &binary);
+    std::vector<unsigned char> readIEND(const std::vector<unsigned char> &binary);
     std::vector<unsigned char>
     readImageData(std::vector<unsigned char> &imageBinary);
 }

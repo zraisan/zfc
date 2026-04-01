@@ -2,7 +2,8 @@
 #include <bit>
 #include <string>
 
-ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary) {
+ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary)
+{
   ppm::FileHeader fileHeader;
   fileHeader.fileType[0] = binary[0];
   fileHeader.fileType[1] = binary[1];
@@ -11,7 +12,8 @@ ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary) {
 
   /* Ignore Coments */
   std::string comments;
-  while (binary[pos] == '#') {
+  while (binary[pos] == '#')
+  {
     while (binary[pos] != '\n')
       pos++;
     pos++;
@@ -45,13 +47,16 @@ ppm::FileHeader ppm::readHeader(const std::vector<unsigned char> &binary) {
 }
 
 std::vector<unsigned char>
-ppm::readImageData(std::vector<unsigned char> &imageBinary) {
+ppm::readImageData(std::vector<unsigned char> &imageBinary)
+{
   ppm::FileHeader imageHeader = ppm::readHeader(imageBinary);
 
   std::vector<unsigned char> imageData;
 
-  for (int y = 0; y < imageHeader.height; y++) {
-    for (int x = 0; x < imageHeader.width * 3; x++) {
+  for (int y = 0; y < imageHeader.height; y++)
+  {
+    for (int x = 0; x < imageHeader.width * 3; x++)
+    {
       int i = y * imageHeader.width * 3 + x;
       imageData.push_back(imageBinary[imageHeader.offset + i]);
     }

@@ -43,6 +43,6 @@ namespace tga
         output.write(reinterpret_cast<const char *> & imageHeader.height, 2);
         output.write(reinterpret_cast<const char *> & imageHeader.bitsPerPixel, 1);
         output.write(reinterpret_cast<const char *> & imageDescriptor, 1);
-        }
+    }
 
 } // namespace tga

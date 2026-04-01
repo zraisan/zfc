@@ -34,6 +34,34 @@ png::FileHeader png::readHeader(const std::vector<unsigned char> &binary)
     return header;
 }
 
-std::vector<unsigned char> png::getPLTE(const std::vector<unsigned char> &binary)
+std::vector<unsigned char> png::readImageData(std::vector<unsigned char> &imageBinary)
+{
+    png::FileHeader header = readHeader(imageBinary);
+
+    int idx = header.offset;
+    while (idx < imageBinary.size())
+    {
+        std::string type(imageBinary.begin() + idx + 4, imageBinary.begin() + idx + 8);
+
+        if (type == "PLTE")
+            png::readPLTE(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+        if (type == "IDAT")
+            png::readIDAT(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+        if (type == "IEND")
+            png::readIEND(std::vector(imageBinary.begin() + idx + 8, imageBinary.end()));
+
+        idx += (imageBinary[idx] << 24) | (imageBinary[idx + 1] << 16) | (imageBinary[idx + 2] << 8) | imageBinary[idx + 3] + 12; // traverse by data length (Chunk data) and overhead length (Length + Chunk type + CRC)
+    }
+}
+
+std::vector<unsigned char> png::readPLTE(const std::vector<unsigned char> &binary)
+{
+}
+
+std::vector<unsigned char> png::readIDAT(const std::vector<unsigned char> &binary)
+{
+}
+
+std::vector<unsigned char> png::readIEND(const std::vector<unsigned char> &binary)
 {
 }
