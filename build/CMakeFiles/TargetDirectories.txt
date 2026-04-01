@@ -1,3 +1,0 @@
-/home/mzkux/Documents/Projects/zfc/build/CMakeFiles/zfc.dir
-/home/mzkux/Documents/Projects/zfc/build/CMakeFiles/edit_cache.dir
-/home/mzkux/Documents/Projects/zfc/build/CMakeFiles/rebuild_cache.dir
