@@ -30,8 +30,7 @@ std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary,
         if (best_length > 0)
         {
             int next_idx = idx + best_length;
-            unsigned char next_char = next_idx < (int)binary.size() ? binary[next_idx] : 0;
-            compressed.push_back({best_offset, best_length, next_char});
+            compressed.push_back({best_offset, best_length, 0});
             idx += best_length + 1;
         }
         else
@@ -40,4 +39,23 @@ std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary,
             idx++;
         }
     }
+}
+
+std::vector<unsigned char> deflate::decompress(std::vector<deflate::LZ77> &compressed_binary)
+{
+    std::vector<unsigned char> binary;
+    for (int i = 0; i < compressed_binary.size(); i++)
+    {
+        if (compressed_binary[i].L > 0)
+        {
+            int start = binary.size() - compressed_binary[i].B;
+            for (int j = 0; j < compressed_binary[i].L; j++)
+                binary.push_back(binary[start + j]);
+        }
+        else
+        {
+            binary.push_back(compressed_binary[i].C);
+        }
+    }
+    return binary;
 }
