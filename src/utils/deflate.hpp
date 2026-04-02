@@ -13,11 +13,11 @@ namespace deflate
     };
     struct HuffmanNode
     {
-        uint8_t value;
+        uint16_t value;
         int freq;
         HuffmanNode *left;
         HuffmanNode *right;
-        HuffmanNode(uint8_t v, int freq, HuffmanNode *left = nullptr, HuffmanNode *right = nullptr)
+        HuffmanNode(uint16_t v, int freq, HuffmanNode *left = nullptr, HuffmanNode *right = nullptr)
             : value(v), freq(freq), left(left), right(right)
         {
         }

@@ -3,6 +3,8 @@
 #include <math.h>
 #include <algorithm>
 #include <string>
+#include <map>
+#include <queue>
 
 std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary, int window_size)
 {
@@ -80,25 +82,54 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
         else
         {
             literal_stream.push_back(lz_compressed[i].C);
-
-            distance_stream.push_back(lz_compressed[i].B);
         }
     }
 
-    int literal_freq[286];  // Standard size: (0-255) Byte - (256) End of Block - (257-285) Length Codes (Grouped)
-    int distance_freq[258]; // Standard size (Grouped)
+    std::map<int, int> literal_freq;  // Standard size: (0-255) Byte - (256) End of Block - (257-285) Length Codes (Grouped)
+    std::map<int, int> distance_freq; // Standard size (Grouped)
 
     for (auto &token : lz_compressed)
     {
-        if (token.L > 0)
+        if (token.L > 2)
         {
-            literal_freq[token.L + 254]++;
+            literal_freq[length_to_code(token.L)]++;
+            distance_freq[distance_to_code(token.B)]++;
         }
         else
         {
             literal_freq[token.C]++;
         }
     }
+    literal_freq[256] = 1; // End of Block
+
+    auto cmp = [](deflate::HuffmanNode *a, deflate::HuffmanNode *b)
+    { return a->freq > b->freq; }; // If a has higher frequency, push it down (weird syntax ngl)
+
+    std::priority_queue<deflate::HuffmanNode *, std::vector<deflate::HuffmanNode *>, decltype(cmp)> lit_pq(cmp); // This is why C++ is hated, extremely unnecessary complexity
+    std::priority_queue<deflate::HuffmanNode *, std::vector<deflate::HuffmanNode *>, decltype(cmp)> dist_pq(cmp);
+
+    for (auto &[symbol, count] : literal_freq)
+        lit_pq.push(new deflate::HuffmanNode(symbol, count));
+
+    for (auto &[symbol, count] : distance_freq)
+        dist_pq.push(new deflate::HuffmanNode(symbol, count));
+
+    while (lit_pq.size() >= 2)
+    {
+        // Left Node
+        deflate::HuffmanNode *l = lit_pq.top();
+        lit_pq.pop();
+
+        // Right Node
+        deflate::HuffmanNode *r = lit_pq.top();
+        lit_pq.pop();
+
+        deflate::HuffmanNode *new_node = new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
+        new_node->left = l;
+        new_node->right = r;
+    }
+
+    deflate::HuffmanNode *root = lit_pq.top();
 }
 
 int length_to_code(int length)
