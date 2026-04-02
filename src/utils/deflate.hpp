@@ -1,18 +1,15 @@
 #pragma once
 
-#include <cstdint>
+#include <vector>
 
 namespace deflate
 {
-    uint8_t filter_none(uint8_t x);
-    uint8_t filter_sub(uint8_t x, uint8_t a);
-    uint8_t filter_up(uint8_t x, uint8_t b);
-    uint8_t filter_average(uint8_t x, uint8_t a, uint8_t b);
-    uint8_t filter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c);
-    uint8_t defilter_none(uint8_t x);
-    uint8_t defilter_sub(uint8_t x, uint8_t a);
-    uint8_t defilter_up(uint8_t x, uint8_t b);
-    uint8_t defilter_average(uint8_t x, uint8_t a, uint8_t b);
-    uint8_t defilter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c);
-    uint8_t paeth_predictor(uint8_t a, uint8_t b, uint8_t c);
+    struct LZ77
+    {
+        int B;
+        int L;
+        int C;
+    };
+    std::vector<LZ77> compress(std::vector<unsigned char> &binary, int sliding_window_size, int lookahead_buffer);
+    std::vector<unsigned char> decompress(std::vector<unsigned char> &binary);
 }

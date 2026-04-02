@@ -1,69 +1,43 @@
 #include "deflate.hpp"
-#include <cstdint>
+#include <vector>
 #include <math.h>
+#include <algorithm>
+#include <string>
 
-uint8_t deflate::filter_none(uint8_t x)
+std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary, int sliding_window_size, int lookahead_buffer)
 {
-    return x;
-}
-
-uint8_t deflate::filter_sub(uint8_t x, uint8_t a)
-{
-    return x - a;
-}
-
-uint8_t deflate::filter_up(uint8_t x, uint8_t b)
-{
-    return x - b;
-}
-
-uint8_t deflate::filter_average(uint8_t x, uint8_t a, uint8_t b)
-{
-    return x - std::floor((a + b) / 2);
-}
-
-uint8_t deflate::filter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
-{
-    return x - deflate::paeth_predictor(a, b, c);
-}
-
-uint8_t deflate::defilter_none(uint8_t x)
-{
-    return x;
-}
-
-uint8_t deflate::defilter_sub(uint8_t x, uint8_t a)
-{
-    return x + a;
-}
-
-uint8_t deflate::defilter_up(uint8_t x, uint8_t b)
-{
-    return x + b;
-}
-
-uint8_t deflate::defilter_average(uint8_t x, uint8_t a, uint8_t b)
-{
-    return x + std::floor((a + b) / 2);
-}
-
-uint8_t deflate::defilter_paeth(uint8_t x, uint8_t a, uint8_t b, uint8_t c)
-{
-    return x + deflate::paeth_predictor(a, b, c);
-}
-
-uint8_t deflate::paeth_predictor(uint8_t a, uint8_t b, uint8_t c)
-{
-    uint8_t p = a + b - c;
-    uint8_t pa = std::abs(p - a);
-    uint8_t pb = std::abs(p - b);
-    uint8_t pc = std::abs(p - c);
-    uint8_t pr;
-    if (pa <= pb && pa <= pc)
-        pr = a;
-    else if (pb <= pc)
-        pr = b;
-    else
-        pr = c;
-    return pr;
+    int idx = 0;
+    std::vector<deflate::LZ77> compressed;
+    while (idx < binary.size())
+    {
+        int sw_start = std::max(0, idx - sliding_window_size);
+        int best_offset = 0;
+        int best_length = 0;
+        for (int i = sw_start; i < idx; i++)
+        {
+            int length = 0;
+            int max_len = std::min(lookahead_buffer, (int)binary.size() - idx);
+            while (length < max_len && binary[i + length] == binary[idx + length])
+            {
+                length++;
+            }
+            if (length > best_length)
+            {
+                best_offset = idx - i;
+                best_length = length;
+            }
+        }
+        if (best_length > 0)
+        {
+            int next_idx = idx + best_length;
+            unsigned char next_char = next_idx < (int)binary.size() ? binary[next_idx] : 0;
+            compressed.push_back({best_offset, best_length, next_char});
+            idx += best_length + 1;
+        }
+        else
+        {
+            compressed.push_back({0, 0, binary[idx]});
+            idx++;
+        }
+    }
 }

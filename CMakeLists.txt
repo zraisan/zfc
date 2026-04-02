@@ -17,6 +17,7 @@ target_sources(zfc
     src/image/tga.cpp
     src/image/png.cpp
     src/utils/deflate.cpp
+    src/utils/png_filter.cpp
 )
 
 
