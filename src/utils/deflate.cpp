@@ -41,6 +41,8 @@ std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary,
             idx++;
         }
     }
+
+    return compressed;
 }
 
 std::vector<unsigned char> deflate::decompress(std::vector<deflate::LZ77> &compressed_binary)
@@ -114,6 +116,7 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
     for (auto &[symbol, count] : distance_freq)
         dist_pq.push(new deflate::HuffmanNode(symbol, count));
 
+    /* Literal Queue */
     while (lit_pq.size() >= 2)
     {
         // Left Node
@@ -127,9 +130,71 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
         deflate::HuffmanNode *new_node = new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
         new_node->left = l;
         new_node->right = r;
+        lit_pq.push(new_node);
     }
 
-    deflate::HuffmanNode *root = lit_pq.top();
+    deflate::HuffmanNode *lit_root = lit_pq.top();
+    std::map<int, std::string> lit_codes;
+    build_codes(lit_root, lit_codes, "");
+
+    /* Distance Queue */
+    while (dist_pq.size() >= 2)
+    {
+        // Left Node
+        deflate::HuffmanNode *l = dist_pq.top();
+        dist_pq.pop();
+
+        // Right Node
+        deflate::HuffmanNode *r = dist_pq.top();
+        dist_pq.pop();
+
+        deflate::HuffmanNode *new_node = new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
+        new_node->left = l;
+        new_node->right = r;
+        dist_pq.push(new_node);
+    }
+
+    deflate::HuffmanNode *dist_root = dist_pq.top();
+    std::map<int, std::string> dist_codes;
+    build_codes(dist_root, dist_codes, "");
+
+    std::string deflated_concat = "";
+    for (int i = 0; i < lz_compressed.size(); i++)
+    {
+        if (lz_compressed[i].L > 2) // In general it is cheaper to group length of 1 and 2 with 0
+        {
+            deflated_concat += lit_codes[lz_compressed[i].L];
+            deflated_concat += dist_codes[lz_compressed[i].B];
+            deflated_concat += lit_codes[lz_compressed[i].C];
+        }
+        else
+        {
+            deflated_concat += lit_codes[lz_compressed[i].C];
+        }
+    }
+    deflated_concat += lit_codes[256];
+    std::vector<unsigned char> deflated_binary(deflated_concat.begin(), deflated_concat.end());
+
+    return deflated_binary;
+}
+
+std::vector<unsigned char> inflate(std::vector<unsigned char> &binary)
+{
+}
+
+void build_codes(deflate::HuffmanNode *node, std::map<int, std::string> &codes, std::string code)
+{
+    if (node == nullptr)
+        return;
+
+    if (!node->left && !node->right)
+    {
+        codes[node->value] = code;
+        return;
+    }
+
+    build_codes(node->left, codes, code + "0");
+    build_codes(node->right, codes, code + "1");
 }
 
 int length_to_code(int length)
