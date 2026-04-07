@@ -2,7 +2,6 @@
 #include <vector>
 #include <math.h>
 #include <algorithm>
-#include <string>
 #include <map>
 #include <queue>
 
@@ -64,28 +63,58 @@ std::vector<unsigned char> deflate::decompress(std::vector<deflate::LZ77> &compr
     return binary;
 }
 
+void build_codes(deflate::HuffmanNode *node, std::map<int, std::pair<int, int>> &codes, int code, int length)
+{
+    if (node == nullptr)
+        return;
+
+    if (!node->left && !node->right)
+    {
+        codes[node->value] = {code, length};
+        return;
+    }
+
+    build_codes(node->left, codes, code << 1, length + 1);
+    build_codes(node->right, codes, (code << 1) | 1, length + 1);
+}
+
+int length_to_code(int length)
+{
+    if (length <= 10)
+        return 254 + length; // 257-264
+    if (length <= 18)
+        return 265 + (length - 11) / 2;
+    if (length <= 34)
+        return 269 + (length - 19) / 4;
+    if (length <= 66)
+        return 273 + (length - 35) / 8;
+    if (length <= 130)
+        return 277 + (length - 67) / 16;
+    if (length <= 257)
+        return 281 + (length - 131) / 32;
+    return 285; // 258
+}
+
+int distance_to_code(int dist)
+{
+    if (dist <= 4)
+        return dist - 1; // 0-3
+    int code = 2;
+    int d = dist - 1;
+    while (d >= 2)
+    {
+        d >>= 1;
+        code++;
+    }
+    return code;
+}
+
 std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
 {
     int window_size = deflate::WINDOW_SIZE;
     if (binary.size() <= 16384)
         window_size = std::pow(2, std::floor(std::sqrt(binary.size())));
     std::vector<deflate::LZ77> lz_compressed = deflate::compress(binary, window_size);
-    std::vector<unsigned char> literal_stream;
-    std::vector<unsigned char> distance_stream;
-    for (int i = 0; i < lz_compressed.size(); i++)
-    {
-        if (lz_compressed[i].L > 2) // In general it is cheaper to group length of 1 and 2 with 0
-        {
-            literal_stream.push_back(lz_compressed[i].L);
-            literal_stream.push_back(lz_compressed[i].C);
-
-            distance_stream.push_back(lz_compressed[i].B);
-        }
-        else
-        {
-            literal_stream.push_back(lz_compressed[i].C);
-        }
-    }
 
     std::map<int, int> literal_freq;  // Standard size: (0-255) Byte - (256) End of Block - (257-285) Length Codes (Grouped)
     std::map<int, int> distance_freq; // Standard size (Grouped)
@@ -134,8 +163,8 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
     }
 
     deflate::HuffmanNode *lit_root = lit_pq.top();
-    std::map<int, std::string> lit_codes;
-    build_codes(lit_root, lit_codes, "");
+    std::map<int, std::pair<int, int>> lit_codes;
+    build_codes(lit_root, lit_codes, 0, 0);
 
     /* Distance Queue */
     while (dist_pq.size() >= 2)
@@ -155,75 +184,58 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
     }
 
     deflate::HuffmanNode *dist_root = dist_pq.top();
-    std::map<int, std::string> dist_codes;
-    build_codes(dist_root, dist_codes, "");
+    std::map<int, std::pair<int, int>> dist_codes;
+    build_codes(dist_root, dist_codes, 0, 0);
 
-    std::string deflated_concat = "";
+    std::vector<unsigned char> deflated_binary;
+    unsigned char current_byte = 0;
+    int bit_pos = 0;
+
+    auto write_bits = [&](int code, int length)
+    {
+        for (int i = length - 1; i >= 0; i--)
+        {
+            if (code & (1 << i))
+                current_byte |= (1 << bit_pos);
+            bit_pos++;
+            if (bit_pos == 8)
+            {
+                deflated_binary.push_back(current_byte);
+                current_byte = 0;
+                bit_pos = 0;
+            }
+        }
+    };
+
     for (int i = 0; i < lz_compressed.size(); i++)
     {
-        if (lz_compressed[i].L > 2) // In general it is cheaper to group length of 1 and 2 with 0
+        if (lz_compressed[i].L > 2)
         {
-            deflated_concat += lit_codes[lz_compressed[i].L];
-            deflated_concat += dist_codes[lz_compressed[i].B];
-            deflated_concat += lit_codes[lz_compressed[i].C];
+            auto [lc, ll] = lit_codes[length_to_code(lz_compressed[i].L)];
+            write_bits(lc, ll);
+            auto [dc, dl] = dist_codes[distance_to_code(lz_compressed[i].B)];
+            write_bits(dc, dl);
+            auto [cc, cl] = lit_codes[lz_compressed[i].C];
+            write_bits(cc, cl);
         }
         else
         {
-            deflated_concat += lit_codes[lz_compressed[i].C];
+            auto [cc, cl] = lit_codes[lz_compressed[i].C];
+            write_bits(cc, cl);
         }
     }
-    deflated_concat += lit_codes[256];
-    std::vector<unsigned char> deflated_binary(deflated_concat.begin(), deflated_concat.end());
+    auto [ec, el] = lit_codes[256];
+    write_bits(ec, el);
+    if (bit_pos > 0)
+        deflated_binary.push_back(current_byte);
 
     return deflated_binary;
 }
 
 std::vector<unsigned char> inflate(std::vector<unsigned char> &binary)
 {
-}
-
-void build_codes(deflate::HuffmanNode *node, std::map<int, std::string> &codes, std::string code)
-{
-    if (node == nullptr)
-        return;
-
-    if (!node->left && !node->right)
+    for (auto &b : binary)
     {
-        codes[node->value] = code;
-        return;
-    }
-
-    build_codes(node->left, codes, code + "0");
-    build_codes(node->right, codes, code + "1");
+        }
 }
 
-int length_to_code(int length)
-{
-    if (length <= 10)
-        return 254 + length; // 257-264
-    if (length <= 18)
-        return 265 + (length - 11) / 2;
-    if (length <= 34)
-        return 269 + (length - 19) / 4;
-    if (length <= 66)
-        return 273 + (length - 35) / 8;
-    if (length <= 130)
-        return 277 + (length - 67) / 16;
-    if (length <= 257)
-        return 281 + (length - 131) / 32;
-    return 285; // 258
-}
-
-int distance_to_code(int dist)
-{
-    if (dist <= 4)
-        return dist - 1; // 0-3
-    int code = 2;
-    int d = dist - 1;
-    while (d >= 2)
-    {
-        d >>= 1;
-        code++;
-    }
-    return code;
-}
