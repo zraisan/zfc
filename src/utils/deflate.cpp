@@ -78,6 +78,42 @@ void build_codes(deflate::HuffmanNode *node, std::map<int, std::pair<int, int>> 
     build_codes(node->right, codes, (code << 1) | 1, length + 1);
 }
 
+std::map<int, std::pair<int, int>> make_canonical(std::map<int, std::pair<int, int>> &codes)
+{
+    // Extract bit lengths
+    std::map<int, int> bit_lengths;
+    int max_len = 0;
+    for (auto &[sym, pair] : codes)
+    {
+        bit_lengths[sym] = pair.second;
+        max_len = std::max(max_len, pair.second);
+    }
+
+    // Count codes of each length
+    std::vector<int> bl_count(max_len + 1, 0);
+    for (auto &[sym, len] : bit_lengths)
+        bl_count[len]++;
+    bl_count[0] = 0;
+
+    // Starting code for each length
+    std::vector<int> next_code(max_len + 1, 0);
+    int code = 0;
+    for (int bits = 1; bits <= max_len; bits++)
+    {
+        code = (code + bl_count[bits - 1]) << 1;
+        next_code[bits] = code;
+    }
+
+    // Assign codes in symbol order (std::map iterates in order)
+    std::map<int, std::pair<int, int>> canonical;
+    for (auto &[sym, len] : bit_lengths)
+    {
+        canonical[sym] = {next_code[len], len};
+        next_code[len]++;
+    }
+    return canonical;
+}
+
 int length_to_code(int length)
 {
     if (length <= 10)
@@ -108,6 +144,31 @@ int distance_to_code(int dist)
     }
     return code;
 }
+
+struct CodeInfo { int base; int extra; };
+
+// Index = length_code - 257
+static const CodeInfo len_info[] = {
+    {3,0},{4,0},{5,0},{6,0},{7,0},{8,0},{9,0},{10,0},
+    {11,1},{13,1},{15,1},{17,1},
+    {19,2},{23,2},{27,2},{31,2},
+    {35,3},{43,3},{51,3},{59,3},
+    {67,4},{83,4},{99,4},{115,4},
+    {131,5},{163,5},{195,5},{227,5},
+    {258,0}
+};
+
+// Index = distance_code
+static const CodeInfo dist_info[] = {
+    {1,0},{2,0},{3,0},{4,0},
+    {5,1},{7,1},{9,2},{13,2},
+    {17,3},{25,3},{33,4},{49,4},
+    {65,5},{97,5},{129,6},{193,6},
+    {257,7},{385,7},{513,8},{769,8},
+    {1025,9},{1537,9},{2049,10},{3073,10},
+    {4097,11},{6145,11},{8193,12},{12289,12},
+    {16385,13},{24577,13}
+};
 
 std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
 {
@@ -165,6 +226,7 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
     deflate::HuffmanNode *lit_root = lit_pq.top();
     std::map<int, std::pair<int, int>> lit_codes;
     build_codes(lit_root, lit_codes, 0, 0);
+    lit_codes = make_canonical(lit_codes);
 
     /* Distance Queue */
     while (dist_pq.size() >= 2)
@@ -186,11 +248,13 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
     deflate::HuffmanNode *dist_root = dist_pq.top();
     std::map<int, std::pair<int, int>> dist_codes;
     build_codes(dist_root, dist_codes, 0, 0);
+    dist_codes = make_canonical(dist_codes);
 
     std::vector<unsigned char> deflated_binary;
     unsigned char current_byte = 0;
     int bit_pos = 0;
 
+    // MSB-first: for Huffman codes
     auto write_bits = [&](int code, int length)
     {
         for (int i = length - 1; i >= 0; i--)
@@ -207,14 +271,39 @@ std::vector<unsigned char> deflate(std::vector<unsigned char> &binary)
         }
     };
 
+    // LSB-first: for extra bits and data values
+    auto write_value = [&](int value, int num_bits)
+    {
+        for (int i = 0; i < num_bits; i++)
+        {
+            if (value & (1 << i))
+                current_byte |= (1 << bit_pos);
+            bit_pos++;
+            if (bit_pos == 8)
+            {
+                deflated_binary.push_back(current_byte);
+                current_byte = 0;
+                bit_pos = 0;
+            }
+        }
+    };
+
     for (int i = 0; i < lz_compressed.size(); i++)
     {
         if (lz_compressed[i].L > 2)
         {
-            auto [lc, ll] = lit_codes[length_to_code(lz_compressed[i].L)];
+            int lcode = length_to_code(lz_compressed[i].L);
+            auto [lc, ll] = lit_codes[lcode];
             write_bits(lc, ll);
-            auto [dc, dl] = dist_codes[distance_to_code(lz_compressed[i].B)];
+            if (len_info[lcode - 257].extra > 0)
+                write_value(lz_compressed[i].L - len_info[lcode - 257].base, len_info[lcode - 257].extra);
+
+            int dcode = distance_to_code(lz_compressed[i].B);
+            auto [dc, dl] = dist_codes[dcode];
             write_bits(dc, dl);
+            if (dist_info[dcode].extra > 0)
+                write_value(lz_compressed[i].B - dist_info[dcode].base, dist_info[dcode].extra);
+
             auto [cc, cl] = lit_codes[lz_compressed[i].C];
             write_bits(cc, cl);
         }
@@ -236,6 +325,5 @@ std::vector<unsigned char> inflate(std::vector<unsigned char> &binary)
 {
     for (auto &b : binary)
     {
-        }
+    }
 }
-
