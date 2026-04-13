@@ -52,13 +52,13 @@ deflate::decompress(std::vector<deflate::LZ77> &compressed_binary) {
 }
 
 void build_codes(deflate::HuffmanNode *node,
-                 std::map<int, std::pair<int, int>> &codes, int code,
+                 std::map<int, deflate::HuffmanCode> &codes, int code,
                  int length) {
   if (node == nullptr)
     return;
 
   if (!node->left && !node->right) {
-    codes[node->value] = {code, length};
+    codes[node->value] = deflate::HuffmanCode{code, length};
     return;
   }
 
@@ -66,14 +66,14 @@ void build_codes(deflate::HuffmanNode *node,
   build_codes(node->right, codes, (code << 1) | 1, length + 1);
 }
 
-std::map<int, std::pair<int, int>>
-make_canonical(std::map<int, std::pair<int, int>> &codes) {
+std::map<int, deflate::HuffmanCode>
+make_canonical(std::map<int, deflate::HuffmanCode> &codes) {
   // Extract bit lengths
   std::map<int, int> bit_lengths;
   int max_len = 0;
   for (auto &[sym, pair] : codes) {
-    bit_lengths[sym] = pair.second;
-    max_len = std::max(max_len, pair.second);
+    bit_lengths[sym] = pair.length;
+    max_len = std::max(max_len, pair.length);
   }
 
   // Count codes of each length
@@ -91,9 +91,9 @@ make_canonical(std::map<int, std::pair<int, int>> &codes) {
   }
 
   // Assign codes in symbol order (std::map iterates in order)
-  std::map<int, std::pair<int, int>> canonical;
+  std::map<int, deflate::HuffmanCode> canonical;
   for (auto &[sym, len] : bit_lengths) {
-    canonical[sym] = {next_code[len], len};
+    canonical[sym] = deflate::HuffmanCode{next_code[len], len};
     next_code[len]++;
   }
   return canonical;
@@ -206,10 +206,10 @@ deflate::deflate(std::vector<unsigned char> &binary) {
   }
 
   deflate::HuffmanNode *lit_root = lit_pq.top();
-  std::map<int, std::pair<int, int>> lit_codes;
+  std::map<int, deflate::HuffmanCode> lit_codes;
   build_codes(lit_root, lit_codes, 0, 0);
   if (lit_codes.size() == 1)
-    lit_codes.begin()->second.second = 1;
+    lit_codes.begin()->second.length = 1;
   lit_codes = make_canonical(lit_codes);
 
   /* Distance Tree */
@@ -230,10 +230,10 @@ deflate::deflate(std::vector<unsigned char> &binary) {
   }
 
   deflate::HuffmanNode *dist_root = dist_pq.top();
-  std::map<int, std::pair<int, int>> dist_codes;
+  std::map<int, deflate::HuffmanCode> dist_codes;
   build_codes(dist_root, dist_codes, 0, 0);
   if (dist_codes.size() == 1)
-    dist_codes.begin()->second.second = 1;
+    dist_codes.begin()->second.length = 1;
   dist_codes = make_canonical(dist_codes);
 
   std::vector<unsigned char> deflated_binary;
@@ -289,9 +289,9 @@ deflate::deflate(std::vector<unsigned char> &binary) {
   // [0..hdist-1]
   std::vector<int> all_lens(hlit + hdist, 0);
   for (auto &[sym, p] : lit_codes)
-    all_lens[sym] = p.second;
+    all_lens[sym] = p.length;
   for (auto &[sym, p] : dist_codes)
-    all_lens[hlit + sym] = p.second;
+    all_lens[hlit + sym] = p.length;
 
   // RLE-encode using the code-length alphabet:
   //  0-15 = literal length, 16 = repeat prev 3-6x (+2), 17 = 0-run 3-10 (+3),
@@ -361,10 +361,10 @@ deflate::deflate(std::vector<unsigned char> &binary) {
   }
 
   deflate::HuffmanNode *clen_root = clen_pq.top();
-  std::map<int, std::pair<int, int>> clen_codes;
+  std::map<int, deflate::HuffmanCode> clen_codes;
   build_codes(clen_root, clen_codes, 0, 0);
   if (clen_codes.size() == 1)
-    clen_codes.begin()->second.second = 1;
+    clen_codes.begin()->second.length = 1;
   clen_codes = make_canonical(clen_codes);
 
   // Emit HCLEN: code-length code lengths in the fixed permutation, with
@@ -373,7 +373,7 @@ deflate::deflate(std::vector<unsigned char> &binary) {
                                     11, 4,  12, 3, 13, 2, 14, 1, 15};
   int clen_lens[19] = {0};
   for (auto &[s, p] : clen_codes)
-    clen_lens[s] = p.second;
+    clen_lens[s] = p.length;
 
   int hclen = 19;
   while (hclen > 4 && clen_lens[clen_perm[hclen - 1]] == 0)

@@ -22,6 +22,11 @@ namespace deflate
         {
         }
     };
+    struct HuffmanCode
+    {
+        int code;
+        int length;
+    };
     struct RleSym
     {
         int sym;   // code-length alphabet symbol (0-18)
