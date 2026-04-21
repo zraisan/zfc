@@ -44,7 +44,7 @@ namespace deflate
     std::vector<LZ77> compress(std::vector<unsigned char> &binary, int window_size = WINDOW_SIZE);
     std::vector<unsigned char> decompress(std::vector<LZ77> &compressed_binary);
     std::vector<unsigned char> deflate(std::vector<unsigned char> &binary);
-    std::vector<unsigned char> inflate(std::vector<unsigned char> &binary);
+    std::vector<unsigned char> inflate(const std::vector<unsigned char> &binary);
     std::vector<unsigned char> make_zlib(const std::vector<unsigned char> &original,
                                          const std::vector<unsigned char> &deflated);
 }

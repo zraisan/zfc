@@ -1,4 +1,5 @@
 #include "png.hpp"
+#include "deflate.hpp"
 #include <string>
 #include <cassert>
 
@@ -35,10 +36,11 @@ png::FileHeader png::read_header(const std::vector<unsigned char> &binary)
     return header;
 }
 
-std::vector<unsigned char> png::decode(std::vector<unsigned char> &image_binary)
+std::vector<unsigned char> png::decode(const std::vector<unsigned char> &image_binary)
 {
     png::FileHeader header = read_header(image_binary);
     std::vector<png::RGB> palette;
+    std::vector<unsigned char> decoded_image;
 
     int idx = header.offset;
     while (idx < image_binary.size())
@@ -49,12 +51,11 @@ std::vector<unsigned char> png::decode(std::vector<unsigned char> &image_binary)
         if (type == "PLTE")
             palette = png::read_plte(std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), header.channels, length);
         if (type == "IDAT")
-            png::read_idat(std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), palette);
-        if (type == "IEND")
-            png::read_iend(std::vector(image_binary.begin() + idx + 8, image_binary.end()));
+            decoded_image = png::read_idat(std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), palette);
 
         idx += length + 12; // traverse by data length (Chunk data) and overhead length (Length + Chunk type + CRC)
     }
+    return decoded_image;
 }
 
 std::vector<png::RGB> png::read_plte(const std::vector<unsigned char> &binary, uint8_t channels, int length)
@@ -76,8 +77,20 @@ std::vector<png::RGB> png::read_plte(const std::vector<unsigned char> &binary, u
 
 std::vector<unsigned char> png::read_idat(const std::vector<unsigned char> &binary, const std::vector<png::RGB> &palette)
 {
-}
+    std::vector<unsigned char> idat_binary = deflate::inflate(binary);
+    if (!palette.empty())
+    {
+        std::vector<unsigned char> decoded_binary;
 
-std::vector<unsigned char> png::read_iend(const std::vector<unsigned char> &binary)
-{
+        for (int i = 0; i < idat_binary.size(); i++)
+        {
+            uint8_t index = idat_binary[i];
+            png::RGB color = palette[index];
+            decoded_binary.push_back(color.r);
+            decoded_binary.push_back(color.g);
+            decoded_binary.push_back(color.b);
+        }
+        return decoded_binary;
+    }
+    return idat_binary;
 }

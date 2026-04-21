@@ -566,7 +566,7 @@ int decode_symbol(deflate::BitReader &br,
 }
 
 std::vector<unsigned char>
-deflate::inflate(std::vector<unsigned char> &binary)
+deflate::inflate(const std::vector<unsigned char> &binary)
 {
     deflate::BitReader br{&binary, 0, 0};
     std::vector<unsigned char> output;
