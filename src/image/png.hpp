@@ -20,8 +20,8 @@ namespace png
     };
 
     FileHeader read_header(const std::vector<unsigned char> &binary);
-    std::vector<unsigned char> read_plte(const std::vector<unsigned char> &binary, uint8_t channels, int length);
-    std::vector<unsigned char> read_idat(const std::vector<unsigned char> &binary);
+    std::vector<png::RGB> read_plte(const std::vector<unsigned char> &binary, uint8_t channels, int length);
+    std::vector<unsigned char> read_idat(const std::vector<unsigned char> &binary, std::vector<png::RGB> &palette);
     std::vector<unsigned char> read_iend(const std::vector<unsigned char> &binary);
     std::vector<unsigned char>
     decode(std::vector<unsigned char> &image_binary);
