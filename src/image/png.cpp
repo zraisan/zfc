@@ -1,5 +1,6 @@
 #include "png.hpp"
 #include "deflate.hpp"
+#include "png_filter.hpp"
 #include <string>
 #include <cassert>
 
@@ -51,7 +52,7 @@ std::vector<unsigned char> png::decode(const std::vector<unsigned char> &image_b
         if (type == "PLTE")
             palette = png::read_plte(std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), header.channels, length);
         if (type == "IDAT")
-            decoded_image = png::read_idat(std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), palette);
+            decoded_image = png::read_idat(header, std::vector(image_binary.begin() + idx + 8, image_binary.begin() + idx + 8 + length), palette);
 
         idx += length + 12; // traverse by data length (Chunk data) and overhead length (Length + Chunk type + CRC)
     }
@@ -75,16 +76,49 @@ std::vector<png::RGB> png::read_plte(const std::vector<unsigned char> &binary, u
     return plte_binary;
 }
 
-std::vector<unsigned char> png::read_idat(const std::vector<unsigned char> &binary, const std::vector<png::RGB> &palette)
+std::vector<unsigned char> png::read_idat(const png::FileHeader &header, const std::vector<unsigned char> &binary, const std::vector<png::RGB> &palette)
 {
     std::vector<unsigned char> idat_binary = deflate::inflate(binary);
+    std::vector<unsigned char> defiltered_binary;
+    std::vector<unsigned char> decoded_binary;
+
+    for (int i = 0; i < idat_binary.size();)
+    {
+        uint8_t filter_type = idat_binary[i];
+        i++;
+        for (int j = 0; j < header.width * header.channels; j++)
+        {
+            uint8_t x = idat_binary[i + j];
+            uint8_t a = (j >= header.channels) ? defiltered_binary[defiltered_binary.size() - header.channels] : 0;                                                                                                // Previous pixel on the same line
+            uint8_t b = (defiltered_binary.size() >= header.width * header.channels) ? defiltered_binary[defiltered_binary.size() - header.width * header.channels] : 0;                                           // Pixel on the previous line
+            uint8_t c = (j >= header.channels && defiltered_binary.size() >= header.width * header.channels) ? defiltered_binary[defiltered_binary.size() - header.width * header.channels - header.channels] : 0; // Previous pixel on the previous line
+
+            switch (filter_type)
+            {
+            case 0:
+                defiltered_binary.push_back(filter::defilter_none(x));
+                break;
+            case 1:
+                defiltered_binary.push_back(filter::defilter_sub(x, a));
+                break;
+            case 2:
+                defiltered_binary.push_back(filter::defilter_up(x, b));
+                break;
+            case 3:
+                defiltered_binary.push_back(filter::defilter_average(x, a, b));
+                break;
+            case 4:
+                defiltered_binary.push_back(filter::defilter_paeth(x, a, b, c));
+                break;
+            }
+        }
+    }
+
     if (!palette.empty())
     {
-        std::vector<unsigned char> decoded_binary;
-
-        for (int i = 0; i < idat_binary.size(); i++)
+        for (int i = 0; i < defiltered_binary.size(); i++)
         {
-            uint8_t index = idat_binary[i];
+            uint8_t index = defiltered_binary[i];
             png::RGB color = palette[index];
             decoded_binary.push_back(color.r);
             decoded_binary.push_back(color.g);
@@ -92,5 +126,14 @@ std::vector<unsigned char> png::read_idat(const std::vector<unsigned char> &bina
         }
         return decoded_binary;
     }
-    return idat_binary;
+    else
+    {
+        decoded_binary = defiltered_binary;
+    }
+
+    for (int i = 0; i < decoded_binary.size(); i++)
+    {
+    }
+
+    return decoded_binary;
 }

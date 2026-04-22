@@ -52,11 +52,11 @@ namespace png
         output.put(0); // compression method
         output.put(0); // filter method
         output.put(0); // interlace method. TODO: implemented Adam7 interlace
-        }
+    }
 
     FileHeader read_header(const std::vector<unsigned char> &binary);
     std::vector<png::RGB> read_plte(const std::vector<unsigned char> &binary, uint8_t channels, int length);
-    std::vector<unsigned char> read_idat(const std::vector<unsigned char> &binary, const std::vector<png::RGB> &palette);
+    std::vector<unsigned char> read_idat(const png::FileHeader &header, const std::vector<unsigned char> &binary, const std::vector<png::RGB> &palette);
     std::vector<unsigned char>
     decode(const std::vector<unsigned char> &image_binary);
 }
