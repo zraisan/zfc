@@ -8,16 +8,22 @@ add_executable(zfc)
 
 target_compile_options(zfc PRIVATE -O3)
 
+ target_include_directories(zfc PRIVATE                                                                                                                                                                                                                                                                    
+    ${CMAKE_SOURCE_DIR}/src                                                                                                                                                                                                                                                                                 
+    ${CMAKE_SOURCE_DIR}/src/utils
+    ${CMAKE_SOURCE_DIR}/src/image
+  )
+
 target_sources(zfc
   PRIVATE
-    src/main.cpp
-    src/image/image.cpp
-    src/image/bmp.cpp
-    src/image/ppm.cpp
-    src/image/tga.cpp
-    src/image/png.cpp
-    src/utils/deflate.cpp
-    src/utils/png_filter.cpp
+    ${CMAKE_SOURCE_DIR}/src/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/image/image.cpp
+    ${CMAKE_SOURCE_DIR}/src/image/bmp.cpp
+    ${CMAKE_SOURCE_DIR}/src/image/ppm.cpp
+    ${CMAKE_SOURCE_DIR}/src/image/tga.cpp
+    ${CMAKE_SOURCE_DIR}/src/image/png.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/deflate.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/png_filter.cpp
 )
 
 
