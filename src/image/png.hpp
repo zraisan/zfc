@@ -1,6 +1,7 @@
 #pragma once
 
 #include "png_filter.hpp"
+#include "deflate.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -141,7 +142,7 @@ namespace png
                                                 row_binary.begin() + (i + 1) * header.width * header.channels);
             std::vector<unsigned char> filter_4(row_binary.begin() + i * header.width * header.channels,
                                                 row_binary.begin() + (i + 1) * header.width * header.channels);
-            for (int j = 0; j < header.width * header.channels; j += header.channels)
+            for (int j = 0; j < header.width * header.channels; j += 1)
             {
                 uint8_t a = (j >= header.channels) ? row_binary[i * header.width * header.channels + j - header.channels]
                                                    : 0; // Previous pixel on the same line

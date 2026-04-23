@@ -82,22 +82,54 @@ void build_codes(deflate::HuffmanNode *node,
 }
 
 std::map<int, deflate::HuffmanCode>
-make_canonical(std::map<int, deflate::HuffmanCode> &codes)
+make_canonical(std::map<int, deflate::HuffmanCode> &codes, int max_limit)
 {
     // Extract bit lengths
     std::map<int, int> bit_lengths;
     int max_len = 0;
     for (auto &[sym, pair] : codes)
     {
-        bit_lengths[sym] = pair.length;
-        max_len = std::max(max_len, pair.length);
+        bit_lengths[sym] = std::min(pair.length, max_limit);
+        max_len = std::max(max_len, bit_lengths[sym]);
     }
 
     // Count codes of each length
-    std::vector<int> bl_count(max_len + 1, 0);
+    std::vector<int> bl_count(max_len + 2, 0);
     for (auto &[sym, len] : bit_lengths)
         bl_count[len]++;
     bl_count[0] = 0;
+
+    // If capping made the tree oversubscribed, lengthen the longest codes
+    // (closest to max_len) until Kraft's inequality holds.
+    long long kraft = 0;
+    for (int L = 1; L <= max_len; L++)
+        kraft += (long long)bl_count[L] << (max_len - L);
+    long long target = 1LL << max_len;
+    while (kraft > target)
+    {
+        for (int L = max_len - 1; L >= 1; L--)
+        {
+            if (bl_count[L] > 0)
+            {
+                bl_count[L]--;
+                bl_count[L + 1]++;
+                kraft -= 1LL << (max_len - L - 1);
+                break;
+            }
+        }
+    }
+
+    // Reassign lengths to symbols: shorter current length → shorter new length
+    std::vector<std::pair<int, int>> sorted_syms;
+    for (auto &[sym, len] : bit_lengths)
+        sorted_syms.push_back({len, sym});
+    std::sort(sorted_syms.begin(), sorted_syms.end());
+    {
+        int idx = 0;
+        for (int L = 1; L <= max_len; L++)
+            for (int k = 0; k < bl_count[L]; k++)
+                bit_lengths[sorted_syms[idx++].second] = L;
+    }
 
     // Starting code for each length
     std::vector<int> next_code(max_len + 1, 0);
@@ -139,14 +171,14 @@ int distance_to_code(int dist)
 {
     if (dist <= 4)
         return dist - 1; // 0-3
-    int code = 2;
+    // For dist >= 5: find highest bit b of (dist-1), then the next-highest
+    // bit selects between the two codes 2b and 2b+1.
     int d = dist - 1;
-    while (d >= 2)
-    {
-        d >>= 1;
-        code++;
-    }
-    return code;
+    int b = 0;
+    while ((1 << (b + 1)) <= d)
+        b++;
+    int second = (d >> (b - 1)) & 1;
+    return 2 * b + second;
 }
 
 struct CodeInfo
@@ -233,7 +265,7 @@ deflate::deflate(std::vector<unsigned char> &binary)
     build_codes(lit_root, lit_codes, 0, 0);
     if (lit_codes.size() == 1)
         lit_codes.begin()->second.length = 1;
-    lit_codes = make_canonical(lit_codes);
+    lit_codes = make_canonical(lit_codes, 15);
 
     /* Distance Tree */
     while (dist_pq.size() >= 2)
@@ -258,7 +290,7 @@ deflate::deflate(std::vector<unsigned char> &binary)
     build_codes(dist_root, dist_codes, 0, 0);
     if (dist_codes.size() == 1)
         dist_codes.begin()->second.length = 1;
-    dist_codes = make_canonical(dist_codes);
+    dist_codes = make_canonical(dist_codes, 15);
 
     std::vector<unsigned char> deflated_binary;
     unsigned char current_byte = 0;
@@ -405,7 +437,7 @@ deflate::deflate(std::vector<unsigned char> &binary)
     build_codes(clen_root, clen_codes, 0, 0);
     if (clen_codes.size() == 1)
         clen_codes.begin()->second.length = 1;
-    clen_codes = make_canonical(clen_codes);
+    clen_codes = make_canonical(clen_codes, 7);
 
     // Emit HCLEN: code-length code lengths in the fixed permutation, with
     // trailing zeros trimmed (minimum 4 entries kept).

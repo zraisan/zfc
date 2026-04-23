@@ -1,4 +1,5 @@
 #include "bmp.hpp"
+#include "png.hpp"
 #include "ppm.hpp"
 #include <fstream>
 #include <iostream>
@@ -53,5 +54,8 @@ void process_image(std::string input_path, std::string output_path) {
     uint32_t file_size = 54 + padded_row * height;
     bmp::FileHeader out = {{}, file_size, 54, width, height, bits_per_pixel, channels};
     bmp::encode(out, image_data, output_path);
+  } else if (output_type == "png") {
+    png::FileHeader out = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), channels, bits_per_pixel, 0};
+    png::encode(out, image_data, output_path);
   }
 }
