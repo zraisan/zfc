@@ -2,7 +2,6 @@
 
 #include "png_filter.hpp"
 #include <algorithm>
-#include <bitset>
 #include <cstdint>
 #include <fstream>
 #include <math.h>
@@ -126,7 +125,7 @@ namespace png
 
     template <typename FH>
     std::vector<unsigned char> msad_heuristic(const FH &header,
-                                              std::vector<unsigned char> &row_binary = {})
+                                              std::vector<unsigned char> &row_binary)
     {
 
         std::vector<unsigned char> output;
