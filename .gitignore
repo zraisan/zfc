@@ -1,5 +1,8 @@
 build
 .vscode
+.cache
+.clangd
+compile_commands.json
 github-token.txt
 src/image/jpg.cpp
 src/image/jpg.hpp
