@@ -5,9 +5,8 @@
 
 jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
     jpg::FileHeader header;
-    header.offset = ((binary[4] << 8) | binary[5]) + 4;  // BE length + 4 bytes for SOI + APP0 marker
-    header.width = binary[14] | (binary[15] << 8);
-    header.height = binary[16] | (binary[17] << 8);
+    header.offset =
+        ((binary[4] << 8) | binary[5]) + 4;  // BE length + 4 bytes for SOI + APP0 marker
 
     // Find SOF marker (0xFFC0 - 0xFFC9, but typically SOF0)
     int idx = 2;  // Start after SOI marker
@@ -19,8 +18,11 @@ jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
             if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
                 (marker >= 0xC9 && marker <= 0xCB)) {
                 // SOF marker found
-                header.bits_per_pixel = binary[idx + 4];  // Precision (usually 8)
-                header.channels = binary[idx + 9];        // Components
+                header.bits_per_pixel = binary[idx + 4];  // Precision (8 ot 12)
+                header.height = binary[5] | (binary[6] << 8);
+                header.width = binary[7] | (binary[8] << 8);
+                header.channels = binary[idx + 9];  // Components
+
                 break;
             }
 
@@ -35,7 +37,7 @@ jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
     return header;
 }
 
-std::vector<unsigned char> decode(std::vector<unsigned char> &binary) {
+std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
     try {
         std::vector<unsigned char> decoded_image;
         // Check Signature (SOI marker FF D8 at the start)
@@ -51,7 +53,7 @@ std::vector<unsigned char> decode(std::vector<unsigned char> &binary) {
         idx += header.offset;
         std::vector<unsigned char> image_data;
         while (idx < binary.size()) {
-            if (binary[idx] == 0xDB)  // DQT marker
+            if (binary[idx] == 0xDB)  // DCT marker
             {
                 int length = (binary[idx + 1] << 8) | binary[idx + 2];
                 idx += length + 3;

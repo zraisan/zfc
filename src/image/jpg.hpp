@@ -1,14 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
 
-namespace jpg
-{
-    struct FileHeader
-    {
+namespace jpg {
+    struct FileHeader {
         char file_type[2];
         uint32_t file_size;
         uint32_t offset;
@@ -19,13 +17,14 @@ namespace jpg
     };
     FileHeader read_header(const std::vector<unsigned char> &binary);
 
-    template <typename FH>
+    template<typename FH>
     std::vector<unsigned char> encode(FH &image_header, std::vector<unsigned char> &image_data,
-                                      std::string output_path)
-    {
+                                      std::string output_path) {
         std::ofstream output(output_path, std::ios::binary);
 
-        output.write("\xFF\xD8", 2); // Start of Image
-        output.write("\xFF\xD8", 2); // Default Header
-        }
-}
+        output.write("\xFF\xD8", 2);  // Start of Image
+        output.write("\xFF\xD8", 2);  // Default Header
+    }
+
+    std::vector<unsigned char> decode(std::vector<unsigned char> &binary);
+}  // namespace jpg
