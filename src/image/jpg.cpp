@@ -1,7 +1,6 @@
 #include "jpg.hpp"
 #include <iostream>
 #include <vector>
-#include "jpg_dct.hpp"
 
 jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
     jpg::FileHeader header;
@@ -18,10 +17,10 @@ jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
             if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
                 (marker >= 0xC9 && marker <= 0xCB)) {
                 // SOF marker found
-                header.bits_per_pixel = binary[idx + 4];  // Precision (8 ot 12)
-                header.height = binary[5] | (binary[6] << 8);
-                header.width = binary[7] | (binary[8] << 8);
-                header.channels = binary[idx + 9];  // Components
+                header.bits_per_pixel = binary[idx + 4];                   // Precision (8 or 12)
+                header.height = (binary[idx + 5] << 8) | binary[idx + 6];  // BE
+                header.width = (binary[idx + 7] << 8) | binary[idx + 8];   // BE
+                header.channels = binary[idx + 9];                         // Components
 
                 break;
             }
@@ -38,42 +37,69 @@ jpg::FileHeader jpg::read_header(const std::vector<unsigned char> &binary) {
 }
 
 std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
+    std::vector<unsigned char> decoded_image;
     try {
-        std::vector<unsigned char> decoded_image;
-        // Check Signature (SOI marker FF D8 at the start)
+        // SOI marker
         if (binary[0] != 0xFF || binary[1] != 0xD8)
             throw -1;
 
-        // Check Default Header (APP0 marker FF E0 right after SOI)
+        // APP0 marker (JFIF header)
         if (binary[2] != 0xFF || binary[3] != 0xE0)
             throw -1;
 
-        int idx = 0;
         jpg::FileHeader header = jpg::read_header(binary);
-        idx += header.offset;
-        std::vector<unsigned char> image_data;
-        while (idx < binary.size()) {
-            if (binary[idx] == 0xDB)  // DCT marker
-            {
-                int length = (binary[idx + 1] << 8) | binary[idx + 2];
-                idx += length + 3;
-                while (idx < length) {
-                    // Create a sub-vector of 64 bytes starting at current idx position
-                    std::vector<unsigned char> dct_block(image_data.begin() + idx,
-                                                         image_data.begin() + idx + 64);
-                    std::vector<unsigned char> spatial_block = dct::idct_transform(dct_block);
-                    decoded_image.insert(decoded_image.end(), spatial_block.begin(),
-                                         spatial_block.end());
-                    idx += 64;
+        int idx = header.offset;
+        std::vector<std::vector<uint16_t>> quant_tables;
+        quant_tables.resize(4);  // Up to 4 tables (0-3)
+
+        while (idx + 1 < (int)binary.size()) {
+            // Every segment should starts with FF MARKER
+            if (binary[idx] != 0xFF) {
+                idx++;
+                continue;
+            }
+            uint8_t marker = binary[idx + 1];
+
+            // Standalone markers (no length, no payload): SOI, EOI, RST0..RST7, TEM
+            if (marker == 0xD8 || (marker >= 0xD0 && marker <= 0xD7) || marker == 0x01) {
+                idx += 2;
+                continue;
+            }
+            if (marker == 0xD9)
+                break;
+
+            // All other markers have FF MM LL LL [payload]
+            int length = (binary[idx + 2] << 8) | binary[idx + 3];
+
+            if (marker == 0xDB) {
+                // DQT: quantization tables. TODO: store for later dequantization.
+                int qt_idx = idx + 4;
+                while (qt_idx < length + qt_idx - 2) {
+                    bool pq = binary[qt_idx] >> 4;       // Precision (0 for 8-bit, 1 for 16-bit)
+                    uint8_t tq = binary[qt_idx] & 0x0F;  // Table identifier (0-3)
+                    quant_tables[tq].resize(64);
+                    qt_idx++;
+                    for (int i = 0; i < 64; i++) {
+                        quant_tables[tq][i] = binary[qt_idx + i];
+                    }
+                    qt_idx += 64;
                 }
+
+            } else if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
+                       (marker >= 0xC9 && marker <= 0xCB)) {
+                // SOF: frame info already extracted by read_header.
+            } else if (marker == 0xC4) {
+                // DHT: huffman tables. TODO: build decoding tables.
+            } else if (marker == 0xDA) {
+                // SOS: entropy-coded scan begins. TODO: decode coefficients,
+                // dequantize, zig-zag unscan, IDCT, YCbCr to RGB.
+                break;
             }
-            if (binary[idx] == 0xC0)  // Start of frame
-            {
-                int length = (binary[idx + 1] << 8) | binary[idx + 2];
-                idx += length + 3;
-            }
+
+            idx += 2 + length;  // marker (2 bytes) + length value (which includes itself)
         }
     } catch (int e) {
         std::cout << "Error: This is not a valid JPG format";
     }
+    return decoded_image;
 }
