@@ -15,6 +15,13 @@ namespace jpg {
         uint16_t bits_per_pixel;
         uint8_t channels;
     };
+
+    struct Component {
+        uint8_t id;
+        uint8_t h_sample;
+        uint8_t v_sample;
+        uint8_t tq;
+    };
     FileHeader read_header(const std::vector<unsigned char> &binary);
 
     template<typename FH>

@@ -49,6 +49,7 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
 
         jpg::FileHeader header = jpg::read_header(binary);
         int idx = header.offset;
+        int dqt_id = 0;
         std::vector<std::vector<uint16_t>> quant_tables;
         quant_tables.resize(4);  // Up to 4 tables (0-3)
 
@@ -72,9 +73,9 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
             int length = (binary[idx + 2] << 8) | binary[idx + 3];
 
             if (marker == 0xDB) {
-                // DQT: quantization tables. TODO: store for later dequantization.
+                // DQT: quantization tables.
                 int qt_idx = idx + 4;
-                while (qt_idx < length + qt_idx - 2) {
+                while (qt_idx < length + idx + 2) {
                     bool pq = binary[qt_idx] >> 4;       // Precision (0 for 8-bit, 1 for 16-bit)
                     uint8_t tq = binary[qt_idx] & 0x0F;  // Table identifier (0-3)
                     quant_tables[tq].resize(64);
@@ -88,8 +89,23 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
             } else if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
                        (marker >= 0xC9 && marker <= 0xCB)) {
                 // SOF: frame info already extracted by read_header.
+                switch (marker) {
+                    case 0xC0: {
+                        uint32_t nf = binary[idx + 9];
+                        std::vector<jpg::Component> components(nf);
+                        for (int i = 0; i < nf; i++) {
+                            components[i].id = binary[idx + 10 + i * 3];
+                            components[i].h_sample = binary[idx + 11 + i * 3];
+                            components[i].v_sample = binary[idx + 12 + i * 3];
+                            components[i].tq = binary[idx + 13 + i * 3];
+                        }
+                        break;
+                    }
+                }
+
             } else if (marker == 0xC4) {
                 // DHT: huffman tables. TODO: build decoding tables.
+
             } else if (marker == 0xDA) {
                 // SOS: entropy-coded scan begins. TODO: decode coefficients,
                 // dequantize, zig-zag unscan, IDCT, YCbCr to RGB.
