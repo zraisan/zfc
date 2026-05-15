@@ -1,7 +1,7 @@
 #include "png.hpp"
 #include <cassert>
 #include <string>
-#include "deflate.hpp"
+#include "png_deflate.hpp"
 #include "png_filter.hpp"
 
 png::FileHeader png::read_header(const std::vector<unsigned char> &binary) {
@@ -80,7 +80,7 @@ std::vector<png::RGB> png::read_plte(const std::vector<unsigned char> &binary, u
 std::vector<unsigned char> png::read_idat(const png::FileHeader &header,
                                           const std::vector<unsigned char> &binary,
                                           const std::vector<png::RGB> &palette) {
-    std::vector<unsigned char> idat_binary = deflate::inflate(binary);
+    std::vector<unsigned char> idat_binary = png_deflate::inflate(binary);
     std::vector<unsigned char> defiltered_binary;
     std::vector<unsigned char> decoded_binary;
 

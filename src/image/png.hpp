@@ -1,7 +1,7 @@
 #pragma once
 
 #include "png_filter.hpp"
-#include "deflate.hpp"
+#include "png_deflate.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -116,8 +116,8 @@ namespace png
         // IDAT
         std::vector<unsigned char> filtered_data =
             msad_heuristic(image_header, image_data);
-        std::vector<unsigned char> compressed_data = deflate::deflate(filtered_data);
-        std::vector<unsigned char> zlib_data = deflate::make_zlib(filtered_data, compressed_data);
+        std::vector<unsigned char> compressed_data = png_deflate::deflate(filtered_data);
+        std::vector<unsigned char> zlib_data = png_deflate::make_zlib(filtered_data, compressed_data);
         write_chunk("\x49\x44\x41\x54", zlib_data);
 
         // IEND (empty data)

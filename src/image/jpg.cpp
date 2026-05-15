@@ -51,6 +51,7 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
         int idx = header.offset;
         int dqt_id = 0;
         std::vector<std::vector<uint16_t>> quant_tables;
+        std::vector<jpg::Component> components;
         quant_tables.resize(4);  // Up to 4 tables (0-3)
 
         while (idx + 1 < (int)binary.size()) {
@@ -70,7 +71,7 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
                 break;
 
             // All other markers have FF MM LL LL [payload]
-            int length = (binary[idx + 2] << 8) | binary[idx + 3];
+            u_int16_t length = (binary[idx + 2] << 8) | binary[idx + 3];
 
             if (marker == 0xDB) {
                 // DQT: quantization tables.
@@ -92,12 +93,12 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
                 switch (marker) {
                     case 0xC0: {
                         uint32_t nf = binary[idx + 9];
-                        std::vector<jpg::Component> components(nf);
+                        components.resize(nf);
                         for (int i = 0; i < nf; i++) {
                             components[i].id = binary[idx + 10 + i * 3];
-                            components[i].h_sample = binary[idx + 11 + i * 3];
-                            components[i].v_sample = binary[idx + 12 + i * 3];
-                            components[i].tq = binary[idx + 13 + i * 3];
+                            components[i].h_sample = binary[idx + 11 + i * 3] >> 4;
+                            components[i].v_sample = binary[idx + 11 + i * 3] & 0x0F;
+                            components[i].tq = binary[idx + 12 + i * 3];
                         }
                         break;
                     }
@@ -105,6 +106,9 @@ std::vector<unsigned char> jpg::decode(std::vector<unsigned char> &binary) {
 
             } else if (marker == 0xC4) {
                 // DHT: huffman tables. TODO: build decoding tables.
+                u_int16_t length = (binary[idx + 2] << 8) | binary[idx + 3];
+                for (int i = 0; i < length - 2; i++) {
+                }
 
             } else if (marker == 0xDA) {
                 // SOS: entropy-coded scan begins. TODO: decode coefficients,

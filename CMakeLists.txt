@@ -18,7 +18,7 @@ add_library(zfc_lib
     ${CMAKE_SOURCE_DIR}/src/image/ppm.cpp
     ${CMAKE_SOURCE_DIR}/src/image/tga.cpp
     ${CMAKE_SOURCE_DIR}/src/image/png.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils/deflate.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/png_deflate.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/png_filter.cpp
 )
 

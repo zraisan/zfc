@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace deflate
+namespace png_deflate
 {
     struct LZ77
     {
