@@ -1,15 +1,15 @@
-#include "deflate.hpp"
+#include "png_deflate.hpp"
 #include <algorithm>
 #include <map>
 #include <math.h>
 #include <queue>
 #include <vector>
 
-std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary,
+std::vector<png_deflate::LZ77> png_deflate::compress(std::vector<unsigned char> &binary,
                                              int window_size)
 {
     int idx = 0;
-    std::vector<deflate::LZ77> compressed;
+    std::vector<png_deflate::LZ77> compressed;
     while (idx < binary.size())
     {
         int sw_start = std::max(0, idx - window_size);
@@ -45,7 +45,7 @@ std::vector<deflate::LZ77> deflate::compress(std::vector<unsigned char> &binary,
 }
 
 std::vector<unsigned char>
-deflate::decompress(std::vector<deflate::LZ77> &compressed_binary)
+png_deflate::decompress(std::vector<png_deflate::LZ77> &compressed_binary)
 {
     std::vector<unsigned char> binary;
     for (int i = 0; i < compressed_binary.size(); i++)
@@ -64,8 +64,8 @@ deflate::decompress(std::vector<deflate::LZ77> &compressed_binary)
     return binary;
 }
 
-void build_codes(deflate::HuffmanNode *node,
-                 std::map<int, deflate::HuffmanCode> &codes, int code,
+void build_codes(png_deflate::HuffmanNode *node,
+                 std::map<int, png_deflate::HuffmanCode> &codes, int code,
                  int length)
 {
     if (node == nullptr)
@@ -73,7 +73,7 @@ void build_codes(deflate::HuffmanNode *node,
 
     if (!node->left && !node->right)
     {
-        codes[node->value] = deflate::HuffmanCode{code, length};
+        codes[node->value] = png_deflate::HuffmanCode{code, length};
         return;
     }
 
@@ -81,8 +81,8 @@ void build_codes(deflate::HuffmanNode *node,
     build_codes(node->right, codes, (code << 1) | 1, length + 1);
 }
 
-std::map<int, deflate::HuffmanCode>
-make_canonical(std::map<int, deflate::HuffmanCode> &codes, int max_limit)
+std::map<int, png_deflate::HuffmanCode>
+make_canonical(std::map<int, png_deflate::HuffmanCode> &codes, int max_limit)
 {
     // Extract bit lengths
     std::map<int, int> bit_lengths;
@@ -141,10 +141,10 @@ make_canonical(std::map<int, deflate::HuffmanCode> &codes, int max_limit)
     }
 
     // Assign codes in symbol order (std::map iterates in order)
-    std::map<int, deflate::HuffmanCode> canonical;
+    std::map<int, png_deflate::HuffmanCode> canonical;
     for (auto &[sym, len] : bit_lengths)
     {
-        canonical[sym] = deflate::HuffmanCode{next_code[len], len};
+        canonical[sym] = png_deflate::HuffmanCode{next_code[len], len};
         next_code[len]++;
     }
     return canonical;
@@ -196,13 +196,13 @@ static const CodeInfo dist_info[] = {
     {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 1}, {7, 1}, {9, 2}, {13, 2}, {17, 3}, {25, 3}, {33, 4}, {49, 4}, {65, 5}, {97, 5}, {129, 6}, {193, 6}, {257, 7}, {385, 7}, {513, 8}, {769, 8}, {1025, 9}, {1537, 9}, {2049, 10}, {3073, 10}, {4097, 11}, {6145, 11}, {8193, 12}, {12289, 12}, {16385, 13}, {24577, 13}};
 
 std::vector<unsigned char>
-deflate::deflate(std::vector<unsigned char> &binary)
+png_deflate::deflate(std::vector<unsigned char> &binary)
 {
-    int window_size = deflate::WINDOW_SIZE;
+    int window_size = png_deflate::WINDOW_SIZE;
     if (binary.size() <= 16384)
         window_size = std::pow(2, std::floor(std::sqrt(binary.size())));
-    std::vector<deflate::LZ77> lz_compressed =
-        deflate::compress(binary, window_size);
+    std::vector<png_deflate::LZ77> lz_compressed =
+        png_deflate::compress(binary, window_size);
 
     std::map<int, int> literal_freq;  // Standard size: (0-255) Byte - (256) End of
                                       // Block - (257-285) Length Codes (Grouped)
@@ -224,44 +224,44 @@ deflate::deflate(std::vector<unsigned char> &binary)
     if (distance_freq.empty())
         distance_freq[0] = 1; // DEFLATE requires at least one distance code
 
-    auto cmp = [](deflate::HuffmanNode *a, deflate::HuffmanNode *b)
+    auto cmp = [](png_deflate::HuffmanNode *a, png_deflate::HuffmanNode *b)
     {
         return a->freq > b->freq;
     }; // If a has higher frequency, push it down (weird syntax ngl)
 
-    std::priority_queue<deflate::HuffmanNode *,
-                        std::vector<deflate::HuffmanNode *>, decltype(cmp)>
+    std::priority_queue<png_deflate::HuffmanNode *,
+                        std::vector<png_deflate::HuffmanNode *>, decltype(cmp)>
         lit_pq(cmp); // This is why C++ is hated, extremely unnecessary complexity
-    std::priority_queue<deflate::HuffmanNode *,
-                        std::vector<deflate::HuffmanNode *>, decltype(cmp)>
+    std::priority_queue<png_deflate::HuffmanNode *,
+                        std::vector<png_deflate::HuffmanNode *>, decltype(cmp)>
         dist_pq(cmp);
 
     for (auto &[symbol, count] : literal_freq)
-        lit_pq.push(new deflate::HuffmanNode(symbol, count));
+        lit_pq.push(new png_deflate::HuffmanNode(symbol, count));
 
     for (auto &[symbol, count] : distance_freq)
-        dist_pq.push(new deflate::HuffmanNode(symbol, count));
+        dist_pq.push(new png_deflate::HuffmanNode(symbol, count));
 
     /* Literal Tree */
     while (lit_pq.size() >= 2)
     {
         // Left Node
-        deflate::HuffmanNode *l = lit_pq.top();
+        png_deflate::HuffmanNode *l = lit_pq.top();
         lit_pq.pop();
 
         // Right Node
-        deflate::HuffmanNode *r = lit_pq.top();
+        png_deflate::HuffmanNode *r = lit_pq.top();
         lit_pq.pop();
 
-        deflate::HuffmanNode *new_node =
-            new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
+        png_deflate::HuffmanNode *new_node =
+            new png_deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
         new_node->left = l;
         new_node->right = r;
         lit_pq.push(new_node);
     }
 
-    deflate::HuffmanNode *lit_root = lit_pq.top();
-    std::map<int, deflate::HuffmanCode> lit_codes;
+    png_deflate::HuffmanNode *lit_root = lit_pq.top();
+    std::map<int, png_deflate::HuffmanCode> lit_codes;
     build_codes(lit_root, lit_codes, 0, 0);
     if (lit_codes.size() == 1)
         lit_codes.begin()->second.length = 1;
@@ -271,22 +271,22 @@ deflate::deflate(std::vector<unsigned char> &binary)
     while (dist_pq.size() >= 2)
     {
         // Left Node
-        deflate::HuffmanNode *l = dist_pq.top();
+        png_deflate::HuffmanNode *l = dist_pq.top();
         dist_pq.pop();
 
         // Right Node
-        deflate::HuffmanNode *r = dist_pq.top();
+        png_deflate::HuffmanNode *r = dist_pq.top();
         dist_pq.pop();
 
-        deflate::HuffmanNode *new_node =
-            new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
+        png_deflate::HuffmanNode *new_node =
+            new png_deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
         new_node->left = l;
         new_node->right = r;
         dist_pq.push(new_node);
     }
 
-    deflate::HuffmanNode *dist_root = dist_pq.top();
-    std::map<int, deflate::HuffmanCode> dist_codes;
+    png_deflate::HuffmanNode *dist_root = dist_pq.top();
+    std::map<int, png_deflate::HuffmanCode> dist_codes;
     build_codes(dist_root, dist_codes, 0, 0);
     if (dist_codes.size() == 1)
         dist_codes.begin()->second.length = 1;
@@ -358,7 +358,7 @@ deflate::deflate(std::vector<unsigned char> &binary)
     // RLE-encode using the code-length alphabet:
     //  0-15 = literal length, 16 = repeat prev 3-6x (+2), 17 = 0-run 3-10 (+3),
     //  18 = 0-run 11-138 (+7).
-    std::vector<deflate::RleSym> rle;
+    std::vector<png_deflate::RleSym> rle;
     {
         int i = 0, n = (int)all_lens.size();
         while (i < n)
@@ -413,27 +413,27 @@ deflate::deflate(std::vector<unsigned char> &binary)
     for (auto &r : rle)
         clen_freq[r.sym]++;
 
-    std::priority_queue<deflate::HuffmanNode *,
-                        std::vector<deflate::HuffmanNode *>, decltype(cmp)>
+    std::priority_queue<png_deflate::HuffmanNode *,
+                        std::vector<png_deflate::HuffmanNode *>, decltype(cmp)>
         clen_pq(cmp);
     for (auto &[s, c] : clen_freq)
-        clen_pq.push(new deflate::HuffmanNode(s, c));
+        clen_pq.push(new png_deflate::HuffmanNode(s, c));
 
     while (clen_pq.size() >= 2)
     {
-        deflate::HuffmanNode *l = clen_pq.top();
+        png_deflate::HuffmanNode *l = clen_pq.top();
         clen_pq.pop();
-        deflate::HuffmanNode *r = clen_pq.top();
+        png_deflate::HuffmanNode *r = clen_pq.top();
         clen_pq.pop();
-        deflate::HuffmanNode *new_node =
-            new deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
+        png_deflate::HuffmanNode *new_node =
+            new png_deflate::HuffmanNode(l->value + r->value, l->freq + r->freq);
         new_node->left = l;
         new_node->right = r;
         clen_pq.push(new_node);
     }
 
-    deflate::HuffmanNode *clen_root = clen_pq.top();
-    std::map<int, deflate::HuffmanCode> clen_codes;
+    png_deflate::HuffmanNode *clen_root = clen_pq.top();
+    std::map<int, png_deflate::HuffmanCode> clen_codes;
     build_codes(clen_root, clen_codes, 0, 0);
     if (clen_codes.size() == 1)
         clen_codes.begin()->second.length = 1;
@@ -503,7 +503,7 @@ deflate::deflate(std::vector<unsigned char> &binary)
 }
 
 std::vector<unsigned char>
-deflate::make_zlib(const std::vector<unsigned char> &original,
+png_deflate::make_zlib(const std::vector<unsigned char> &original,
                    const std::vector<unsigned char> &deflated)
 {
     std::vector<unsigned char> out;
@@ -526,7 +526,7 @@ deflate::make_zlib(const std::vector<unsigned char> &original,
 }
 
 // LSB-first bit reader, mirrors the byte packing used by deflate's writer.
-int read_value(deflate::BitReader &br, int num_bits)
+int read_value(png_deflate::BitReader &br, int num_bits)
 {
     int value = 0;
     for (int i = 0; i < num_bits; i++)
@@ -581,7 +581,7 @@ build_canonical(const std::vector<int> &lengths)
 
 // Read bits MSB-first into a code accumulator until it matches a canonical
 // code.
-int decode_symbol(deflate::BitReader &br,
+int decode_symbol(png_deflate::BitReader &br,
                   const std::map<std::pair<int, int>, int> &table)
 {
     int code = 0;
@@ -598,9 +598,9 @@ int decode_symbol(deflate::BitReader &br,
 }
 
 std::vector<unsigned char>
-deflate::inflate(const std::vector<unsigned char> &binary)
+png_deflate::inflate(const std::vector<unsigned char> &binary)
 {
-    deflate::BitReader br{&binary, 0, 0};
+    png_deflate::BitReader br{&binary, 0, 0};
     std::vector<unsigned char> output;
     bool last_block = false;
 
