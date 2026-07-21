@@ -1,8 +1,8 @@
 <div align="center">
 
-# zfc
+# zdc
 
-**From-Scratch Image Format Encoder and Decoder**
+**Zero-Dependency Converter — From-Scratch Image Format Encoder and Decoder**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
@@ -12,7 +12,7 @@
 
 ---
 
-zfc is a C++20 library and command-line tool that reads, writes, and converts image formats from scratch. No libpng, no stb_image, **no third-party dependencies at all**. Every format is parsed and produced byte-by-byte directly from its specification, using only the C++ standard library. The project doubles as a ground-up implementation of the compression primitives behind modern image formats, including LZ77, Huffman coding, DEFLATE, zlib, CRC-32, and Adler-32.
+zdc (Zero-Dependency Converter) is a C++20 library and command-line tool that reads, writes, and converts image formats from scratch. No libpng, no stb_image, **no third-party dependencies at all**. Every format is parsed and produced byte-by-byte directly from its specification, using only the C++ standard library. The project doubles as a ground-up implementation of the compression primitives behind modern image formats, including LZ77, Huffman coding, DEFLATE, zlib, CRC-32, and Adler-32.
 
 ## Features
 
@@ -22,20 +22,20 @@ zfc is a C++20 library and command-line tool that reads, writes, and converts im
 - **Zlib Container**: 2-byte header and Adler-32 checksum compatible with libpng, zlib, and Pillow
 - **PNG Chunk Framing**: CRC-32 validation and proper IHDR, PLTE, IDAT, and IEND emission with color-type-aware rules
 - **Adaptive Filtering**: All five PNG filter types (None, Sub, Up, Average, Paeth) with a per-row MSAD heuristic for choosing the best filter
-- **Library or CLI**: Invoke through the `zfc` executable, or link as a CMake sub-project to use the same primitives from your own C++ code
+- **Library or CLI**: Invoke through the `zdc` executable, or link as a CMake sub-project to use the same primitives from your own C++ code
 
 ## Installation
 
 ### From Source
 
 ```bash
-git clone https://github.com/zraisan/zfc.git
-cd zfc
+git clone https://github.com/zraisan/zdc.git
+cd zdc
 
 cmake -B build
 cmake --build build
 
-./build/zfc
+./build/zdc
 ```
 
 ### Requirements
@@ -46,15 +46,15 @@ cmake --build build
 ## Usage
 
 ```bash
-zfc image <input> <output>
+zdc image <input> <output>
 ```
 
 Input and output formats are inferred from the file extension. Examples:
 
 ```bash
-zfc image photo.bmp photo.png
-zfc image shot.ppm shot.bmp
-zfc image render.bmp render.ppm
+zdc image photo.bmp photo.png
+zdc image shot.ppm shot.bmp
+zdc image render.bmp render.ppm
 ```
 
 ## Supported Formats
@@ -89,18 +89,18 @@ zfc image render.bmp render.ppm
 
 ## Using as a Library
 
-Drop zfc into another CMake project:
+Drop zdc into another CMake project:
 
 ```cmake
-add_subdirectory(path/to/zfc)
-target_link_libraries(my_app PRIVATE zfc::zfc)
+add_subdirectory(path/to/zdc)
+target_link_libraries(my_app PRIVATE zdc::zdc)
 ```
 
 Skip the CLI build when embedding:
 
 ```cmake
-set(ZFC_BUILD_EXECUTABLE OFF)
-add_subdirectory(path/to/zfc)
+set(ZDC_BUILD_EXECUTABLE OFF)
+add_subdirectory(path/to/zdc)
 ```
 
 Encode from C++:
@@ -116,7 +116,7 @@ C++ only. No C bindings are provided.
 
 ## Architecture
 
-zfc is organized around per-format encoder and decoder pairs backed by shared compression primitives:
+zdc is organized around per-format encoder and decoder pairs backed by shared compression primitives:
 
 ```
 src/
@@ -151,7 +151,7 @@ Contributions are welcome.
     ```
 
 3. Wire the new format into `process_image` in `src/image/image.cpp` so the CLI dispatches on the file extension.
-4. Add the new `.cpp` to the `zfc_lib` source list in `CMakeLists.txt`.
+4. Add the new `.cpp` to the `zdc_lib` source list in `CMakeLists.txt`.
 
 ### Adding Shared Primitives
 
